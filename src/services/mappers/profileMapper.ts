@@ -1,0 +1,99 @@
+import type { Profile, ProfileLink, ProfileType } from '../../types';
+import type {
+  CreateProfileInput,
+  UpdateProfileInput,
+} from '../profileService';
+
+export type ProfileRow = {
+  id: string;
+  user_id: string;
+  type: ProfileType;
+  public_slug: string;
+  name: string;
+  headline: string | null;
+  bio: string | null;
+  email: string | null;
+  phone: string | null;
+  location: string | null;
+  avatar_url: string | null;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProfileLinkRow = {
+  id: string;
+  profile_id: string;
+  label: string;
+  url: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProfileWithLinksRow = ProfileRow & {
+  profile_links?: ProfileLinkRow[] | null;
+};
+
+export function mapProfileRowToProfile(row: ProfileWithLinksRow): Profile {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
+    publicSlug: row.public_slug,
+    name: row.name,
+    headline: row.headline ?? '',
+    bio: row.bio ?? '',
+    email: row.email ?? undefined,
+    phone: row.phone ?? undefined,
+    location: row.location ?? undefined,
+    avatarUrl: row.avatar_url ?? undefined,
+    links: (row.profile_links ?? []).map(mapProfileLinkRowToProfileLink),
+    isPublic: row.is_public,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function mapProfileToInsert(profile: CreateProfileInput) {
+  return {
+    user_id: profile.userId,
+    type: profile.type,
+    public_slug: profile.publicSlug,
+    name: profile.name,
+    headline: profile.headline,
+    bio: profile.bio,
+    email: profile.email ?? null,
+    phone: profile.phone ?? null,
+    location: profile.location ?? null,
+    avatar_url: profile.avatarUrl ?? null,
+    is_public: profile.isPublic ?? true,
+  };
+}
+
+export function mapProfileUpdatesToRow(updates: UpdateProfileInput) {
+  return {
+    ...(updates.type ? { type: updates.type } : {}),
+    ...(updates.publicSlug ? { public_slug: updates.publicSlug } : {}),
+    ...(updates.name ? { name: updates.name } : {}),
+    ...(updates.headline ? { headline: updates.headline } : {}),
+    ...(updates.bio ? { bio: updates.bio } : {}),
+    ...(updates.email !== undefined ? { email: updates.email } : {}),
+    ...(updates.phone !== undefined ? { phone: updates.phone } : {}),
+    ...(updates.location !== undefined ? { location: updates.location } : {}),
+    ...(updates.avatarUrl !== undefined ? { avatar_url: updates.avatarUrl } : {}),
+    ...(updates.isPublic !== undefined ? { is_public: updates.isPublic } : {}),
+  };
+}
+
+function mapProfileLinkRowToProfileLink(row: ProfileLinkRow): ProfileLink {
+  return {
+    id: row.id,
+    profileId: row.profile_id,
+    label: row.label,
+    url: row.url,
+    order: row.display_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
