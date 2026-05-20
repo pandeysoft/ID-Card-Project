@@ -1,5 +1,6 @@
 export { supabase } from './supabase';
 export * as authService from './authService';
+export * as avatarService from './avatarService';
 export * as bootstrapService from './bootstrapService';
 export * as businessCardOcrService from './businessCardOcrService';
 export * as profileService from './profileService';

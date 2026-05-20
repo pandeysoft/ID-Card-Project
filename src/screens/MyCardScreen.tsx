@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { User } from '@supabase/supabase-js';
 import { ProfileQrCode } from '../components/ProfileQrCode';
@@ -8,6 +8,7 @@ import { mockBusinessProfile, mockProfiles } from '../lib/mockData';
 import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
 import type { EditProfileForm } from './EditProfileScreen';
 import { initializeUserProfiles } from '../services/bootstrapService';
+import { getAvatarPublicUrl, uploadProfileAvatar } from '../services/avatarService';
 import { getProfileLinks, replaceProfileLinks } from '../services/profileLinkService';
 import { getProfiles, updateProfile } from '../services/profileService';
 import { spacing } from '../theme';
@@ -113,6 +114,7 @@ export function MyCardScreen() {
               headline: form.title,
               company: form.company,
               bio: form.bio,
+              avatarUrl: form.avatarUri ?? profile.avatarUrl,
               links: form.links.map((link, index) => ({
                 id: link.id,
                 profileId,
@@ -131,11 +133,29 @@ export function MyCardScreen() {
       return;
     }
 
+    let avatarUrl = form.avatarUri;
+
+    if (form.avatarUri && form.avatarUri !== activeProfile.avatarUrl) {
+      try {
+        avatarUrl = getAvatarPublicUrl(await uploadProfileAvatar(user.id, profileId, form.avatarUri));
+        setProfiles((currentProfiles) =>
+          currentProfiles.map((profile) =>
+            profile.id === profileId ? { ...profile, avatarUrl } : profile,
+          ),
+        );
+      } catch (error) {
+        throw new Error(
+          error instanceof Error ? `Avatar upload failed: ${error.message}` : 'Avatar upload failed.',
+        );
+      }
+    }
+
     await updateProfile(profileId, {
       name: form.displayName,
       headline: form.title,
       company: form.company,
       bio: form.bio,
+      avatarUrl,
     });
 
     await replaceProfileLinks(
@@ -215,7 +235,11 @@ function ProfileFront({
       </Pressable>
 
       <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{getInitials(profile.name)}</Text>
+        {profile.avatarUrl ? (
+          <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+        ) : (
+          <Text style={styles.avatarText}>{getInitials(profile.name)}</Text>
+        )}
       </View>
 
       <View style={styles.nameRow}>
@@ -645,6 +669,10 @@ const styles = StyleSheet.create({
     color: '#6366F1',
     fontSize: 31,
     fontWeight: '800',
+  },
+  avatarImage: {
+    height: '100%',
+    width: '100%',
   },
   nameRow: {
     alignItems: 'center',

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { colors, spacing, typography } from '../theme';
 import type { Profile } from '../types';
@@ -20,6 +21,7 @@ export type EditProfileForm = {
   title: string;
   company: string;
   bio: string;
+  avatarUri?: string;
   links: EditableProfileLink[];
 };
 
@@ -36,6 +38,7 @@ export function EditProfileScreen({ profile, onCancel, onSave }: EditProfileScre
       title: profile?.headline ?? '',
       company: profile?.company ?? '',
       bio: profile?.bio ?? '',
+      avatarUri: profile?.avatarUrl,
       links: (profile?.links ?? []).map((link) => ({
         id: link.id,
         type: getLinkType(link.label),
@@ -47,6 +50,7 @@ export function EditProfileScreen({ profile, onCancel, onSave }: EditProfileScre
   );
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const [pickingAvatar, setPickingAvatar] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   function updateField(field: keyof EditProfileForm, value: string) {
@@ -77,6 +81,33 @@ export function EditProfileScreen({ profile, onCancel, onSave }: EditProfileScre
     }));
   }
 
+  async function chooseAvatar() {
+    setPickingAvatar(true);
+    setErrorMessage(null);
+
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        throw new Error('Photo library permission is required to choose an avatar.');
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: false,
+        mediaTypes: ['images'],
+        quality: 0.85,
+      });
+
+      if (!result.canceled) {
+        updateField('avatarUri', result.assets[0]?.uri ?? '');
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to choose avatar.');
+    } finally {
+      setPickingAvatar(false);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     setErrorMessage(null);
@@ -98,6 +129,22 @@ export function EditProfileScreen({ profile, onCancel, onSave }: EditProfileScre
     <Screen title="Edit Profile" subtitle="Update the basics for this card.">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.formCard}>
+          <View style={styles.avatarRow}>
+            <View style={styles.avatarPreview}>
+              {form.avatarUri ? (
+                <Image source={{ uri: form.avatarUri }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{getInitials(form.displayName || 'Profile')}</Text>
+              )}
+            </View>
+            <Pressable
+              disabled={pickingAvatar || saving}
+              onPress={chooseAvatar}
+              style={({ pressed }) => [styles.addLinkButton, pressed ? styles.pressed : null, pickingAvatar ? styles.disabled : null]}
+            >
+              <Text style={styles.addLinkText}>{pickingAvatar ? 'Opening...' : 'Choose Avatar'}</Text>
+            </Pressable>
+          </View>
           <ProfileField
             label="Display name"
             onChangeText={(value) => updateField('displayName', value)}
@@ -205,6 +252,15 @@ function getDefaultLabel(type: ProfileLinkType) {
   return `${type[0].toUpperCase()}${type.slice(1)}`;
 }
 
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 const styles = StyleSheet.create({
   content: {
     paddingBottom: spacing.xxl,
@@ -219,6 +275,30 @@ const styles = StyleSheet.create({
   },
   field: {
     marginBottom: spacing.md,
+  },
+  avatarRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  avatarPreview: {
+    alignItems: 'center',
+    backgroundColor: colors.primarySoft,
+    borderRadius: 32,
+    height: 64,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 64,
+  },
+  avatarImage: {
+    height: '100%',
+    width: '100%',
+  },
+  avatarText: {
+    color: colors.primary,
+    fontSize: typography.sizes.body,
+    fontWeight: '800',
   },
   label: {
     color: colors.mutedText,
