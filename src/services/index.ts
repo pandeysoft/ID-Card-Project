@@ -9,3 +9,4 @@ export * as contactService from './contactService';
 export * as healthService from './healthService';
 export * as leadService from './leadService';
 export * as publicProfileService from './publicProfileService';
+export * as vcardService from './vcardService';

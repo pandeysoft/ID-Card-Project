@@ -3,7 +3,9 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
 import { mockLeads, mockSavedContacts } from '../lib/mockData';
+import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
 import { getContacts } from '../services/contactService';
+import { generateVCardFromContact, shareVCardFile } from '../services/vcardService';
 import { colors, spacing, typography } from '../theme';
 import type { SavedContact } from '../types';
 
@@ -18,6 +20,7 @@ const filters: { label: string; value: ContactFilter }[] = [
 
 export function ContactsScreen() {
   const { isDevelopmentAuthBypass, user, loading: authLoading } = useAuth();
+  const { openContactDetail } = useEditProfileNavigation();
   const [savedContacts, setSavedContacts] = useState<SavedContact[]>([...mockSavedContacts]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -142,7 +145,7 @@ export function ContactsScreen() {
           {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
           {contactsLoading ? <Text style={styles.loading}>Loading contacts...</Text> : null}
           {contacts.map((contact) => (
-            <ContactRow key={contact.id} contact={contact} />
+            <ContactRow key={contact.id} contact={contact} onOpen={() => openContactDetail(contact)} />
           ))}
         </View>
       </ScrollView>
@@ -150,11 +153,26 @@ export function ContactsScreen() {
   );
 }
 
-function ContactRow({ contact }: { contact: SavedContact }) {
+function ContactRow({ contact, onOpen }: { contact: SavedContact; onOpen: () => void }) {
   const lead = getLeadForContact(contact);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  async function handleExportVCard() {
+    setExporting(true);
+    setExportError(null);
+
+    try {
+      await shareVCardFile(contact.snapshot.name, generateVCardFromContact(contact));
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'Unable to export vCard.');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
-    <Pressable style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}>
+    <Pressable onPress={onOpen} style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}>
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>{getInitials(contact.snapshot.name)}</Text>
       </View>
@@ -171,7 +189,18 @@ function ContactRow({ contact }: { contact: SavedContact }) {
         <Text numberOfLines={1} style={styles.meta}>
           {getRelationshipType(contact)} · {lead?.source ?? 'Manual save'}
         </Text>
+        {exportError ? <Text style={styles.exportError}>{exportError}</Text> : null}
       </View>
+      <Pressable
+        disabled={exporting}
+        onPress={(event) => {
+          event.stopPropagation();
+          void handleExportVCard();
+        }}
+        style={({ pressed }) => [styles.exportButton, pressed ? styles.pressed : null, exporting ? styles.disabled : null]}
+      >
+        <Text style={styles.exportButtonText}>{exporting ? '...' : 'Export vCard'}</Text>
+      </Pressable>
     </Pressable>
   );
 }
@@ -307,6 +336,9 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
   },
+  disabled: {
+    opacity: 0.64,
+  },
   avatar: {
     alignItems: 'center',
     backgroundColor: colors.primarySoft,
@@ -355,6 +387,28 @@ const styles = StyleSheet.create({
   },
   meta: {
     color: colors.mutedText,
+    fontSize: typography.sizes.caption,
+    fontWeight: '700',
+    marginTop: spacing.xs,
+  },
+  exportButton: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    marginLeft: spacing.sm,
+    minHeight: 34,
+    paddingHorizontal: spacing.sm,
+  },
+  exportButtonText: {
+    color: colors.primary,
+    fontSize: typography.sizes.caption,
+    fontWeight: '800',
+  },
+  exportError: {
+    color: colors.danger,
     fontSize: typography.sizes.caption,
     fontWeight: '700',
     marginTop: spacing.xs,

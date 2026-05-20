@@ -11,6 +11,7 @@ import { initializeUserProfiles } from '../services/bootstrapService';
 import { getAvatarPublicUrl, uploadProfileAvatar } from '../services/avatarService';
 import { getProfileLinks, replaceProfileLinks } from '../services/profileLinkService';
 import { getProfiles, updateProfile } from '../services/profileService';
+import { generateVCardFromProfile, shareVCardFile } from '../services/vcardService';
 import { spacing } from '../theme';
 import type { Profile, ProfileType } from '../types';
 
@@ -291,6 +292,22 @@ function ProfileFront({
 }
 
 function QrBack({ profile, profileUrl, onFlip }: { profile: Profile; profileUrl: string; onFlip: () => void }) {
+  const [sharingVCard, setSharingVCard] = useState(false);
+  const [vcardError, setVCardError] = useState<string | null>(null);
+
+  async function handleShareVCard() {
+    setSharingVCard(true);
+    setVCardError(null);
+
+    try {
+      await shareVCardFile(profile.name, generateVCardFromProfile(profile));
+    } catch (error) {
+      setVCardError(error instanceof Error ? error.message : 'Unable to share vCard.');
+    } finally {
+      setSharingVCard(false);
+    }
+  }
+
   return (
     <>
       <View style={styles.softOrbTop} />
@@ -322,6 +339,15 @@ function QrBack({ profile, profileUrl, onFlip }: { profile: Profile; profileUrl:
           <Text style={styles.primaryActionText}>Share Profile</Text>
         </Pressable>
       </View>
+
+      {vcardError ? <Text style={styles.vcardError}>{vcardError}</Text> : null}
+      <Pressable
+        disabled={sharingVCard}
+        onPress={handleShareVCard}
+        style={({ pressed }) => [styles.flipAction, pressed && styles.pressed, sharingVCard && styles.disabled]}
+      >
+        <Text style={styles.flipActionText}>{sharingVCard ? 'Preparing vCard...' : 'Save vCard'}</Text>
+      </Pressable>
 
       <Pressable onPress={onFlip} style={({ pressed }) => [styles.flipAction, pressed && styles.pressed]}>
         <Text style={styles.flipActionText}>Flip to Profile</Text>
@@ -1117,5 +1143,15 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.76,
+  },
+  disabled: {
+    opacity: 0.64,
+  },
+  vcardError: {
+    color: '#DC2626',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
 });

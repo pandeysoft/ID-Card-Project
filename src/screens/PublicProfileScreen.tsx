@@ -5,6 +5,7 @@ import { useAuth } from '../contexts';
 import { mockProfiles } from '../lib/mockData';
 import { createContactFromProfile } from '../services/contactService';
 import { getPublicProfileBySlug } from '../services/publicProfileService';
+import { generateVCardFromProfile, shareVCardFile } from '../services/vcardService';
 import { colors, spacing, typography } from '../theme';
 import type { Profile, ProfileLink, SavedContact } from '../types';
 
@@ -22,6 +23,7 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadMessage, setLoadMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [sharingVCard, setSharingVCard] = useState(false);
   const [savedContact, setSavedContact] = useState<SavedContact | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const displayProfile = useMemo(() => loadedProfile ?? profile ?? defaultProfile, [loadedProfile, profile]);
@@ -82,6 +84,19 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
     }
   }
 
+  async function handleShareVCard() {
+    setSharingVCard(true);
+    setErrorMessage(null);
+
+    try {
+      await shareVCardFile(displayProfile.name, generateVCardFromProfile(displayProfile));
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to share vCard.');
+    } finally {
+      setSharingVCard(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -120,6 +135,9 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
 
         <Pressable disabled={saving} onPress={handleSaveContact} style={({ pressed }) => [styles.saveButton, pressed ? styles.pressed : null, saving ? styles.disabled : null]}>
           <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Contact'}</Text>
+        </Pressable>
+        <Pressable disabled={sharingVCard} onPress={handleShareVCard} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null, sharingVCard ? styles.disabled : null]}>
+          <Text style={styles.secondaryButtonText}>{sharingVCard ? 'Preparing vCard...' : 'Save vCard'}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -335,6 +353,21 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: colors.surface,
+    fontSize: typography.sizes.body,
+    fontWeight: '800',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    minHeight: 54,
+  },
+  secondaryButtonText: {
+    color: colors.text,
     fontSize: typography.sizes.body,
     fontWeight: '800',
   },
