@@ -17,12 +17,15 @@ const filters: { label: string; value: ContactFilter }[] = [
   { label: 'Professional', value: 'professional' },
   { label: 'Lead', value: 'lead' },
 ];
+const contactsPageSize = 25;
 
 export function ContactsScreen() {
   const { isDevelopmentAuthBypass, user, loading: authLoading } = useAuth();
   const { openContactDetail } = useEditProfileNavigation();
   const [savedContacts, setSavedContacts] = useState<SavedContact[]>([...mockSavedContacts]);
   const [contactsLoading, setContactsLoading] = useState(false);
+  const [contactsLoadingMore, setContactsLoadingMore] = useState(false);
+  const [hasMoreContacts, setHasMoreContacts] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<ContactFilter>('all');
@@ -38,6 +41,7 @@ export function ContactsScreen() {
       if (!user || isDevelopmentAuthBypass) {
         setSavedContacts([...mockSavedContacts]);
         setContactsLoading(false);
+        setHasMoreContacts(false);
         setErrorMessage(null);
         return;
       }
@@ -46,10 +50,15 @@ export function ContactsScreen() {
       setErrorMessage(null);
 
       try {
-        const contacts = await getContacts(user.id);
+        const contacts = await getContacts(user.id, {
+          limit: contactsPageSize,
+          offset: 0,
+          search: query.trim() || undefined,
+        });
 
         if (mounted) {
           setSavedContacts(contacts);
+          setHasMoreContacts(contacts.length === contactsPageSize);
         }
       } catch (error) {
         console.warn('CardIQ contacts failed to load.', error);
@@ -70,7 +79,32 @@ export function ContactsScreen() {
     return () => {
       mounted = false;
     };
-  }, [authLoading, isDevelopmentAuthBypass, user]);
+  }, [authLoading, isDevelopmentAuthBypass, query, user]);
+
+  async function handleLoadMoreContacts() {
+    if (!user || isDevelopmentAuthBypass || contactsLoadingMore) {
+      return;
+    }
+
+    setContactsLoadingMore(true);
+    setErrorMessage(null);
+
+    try {
+      const nextContacts = await getContacts(user.id, {
+        limit: contactsPageSize,
+        offset: savedContacts.length,
+        search: query.trim() || undefined,
+      });
+
+      setSavedContacts((current) => [...current, ...nextContacts]);
+      setHasMoreContacts(nextContacts.length === contactsPageSize);
+    } catch (error) {
+      console.warn('CardIQ contacts failed to load more.', error);
+      setErrorMessage('Unable to load more contacts.');
+    } finally {
+      setContactsLoadingMore(false);
+    }
+  }
 
   const contacts = useMemo(
     () =>
@@ -147,6 +181,15 @@ export function ContactsScreen() {
           {contacts.map((contact) => (
             <ContactRow key={contact.id} contact={contact} onOpen={() => openContactDetail(contact)} />
           ))}
+          {hasMoreContacts ? (
+            <Pressable
+              disabled={contactsLoadingMore}
+              onPress={handleLoadMoreContacts}
+              style={({ pressed }) => [styles.loadMoreButton, pressed ? styles.pressed : null, contactsLoadingMore ? styles.disabled : null]}
+            >
+              <Text style={styles.loadMoreText}>{contactsLoadingMore ? 'Loading...' : 'Load more'}</Text>
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
     </Screen>
@@ -412,5 +455,15 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.caption,
     fontWeight: '700',
     marginTop: spacing.xs,
+  },
+  loadMoreButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  loadMoreText: {
+    color: colors.primary,
+    fontSize: typography.sizes.small,
+    fontWeight: '800',
   },
 });

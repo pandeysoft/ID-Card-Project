@@ -21,12 +21,15 @@ const filters: { label: string; value: LeadFilter }[] = [
   { label: 'Converted', value: 'converted' },
   { label: 'Lost', value: 'lost' },
 ];
+const leadsPageSize = 25;
 
 export function LeadsScreen({ onClose }: LeadsScreenProps) {
   const { isDevelopmentAuthBypass, loading: authLoading, user } = useAuth();
   const { openLeadDetail } = useEditProfileNavigation();
   const [savedLeads, setSavedLeads] = useState<Lead[]>([...mockLeads]);
   const [leadsLoading, setLeadsLoading] = useState(false);
+  const [leadsLoadingMore, setLeadsLoadingMore] = useState(false);
+  const [hasMoreLeads, setHasMoreLeads] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<LeadFilter>('all');
@@ -42,6 +45,7 @@ export function LeadsScreen({ onClose }: LeadsScreenProps) {
       if (!user || isDevelopmentAuthBypass) {
         setSavedLeads([...mockLeads]);
         setLeadsLoading(false);
+        setHasMoreLeads(false);
         setErrorMessage(null);
         return;
       }
@@ -50,10 +54,16 @@ export function LeadsScreen({ onClose }: LeadsScreenProps) {
       setErrorMessage(null);
 
       try {
-        const leads = await getLeads(user.id);
+        const leads = await getLeads(user.id, {
+          limit: leadsPageSize,
+          offset: 0,
+          search: query.trim() || undefined,
+          status: activeFilter === 'all' ? undefined : activeFilter,
+        });
 
         if (mounted) {
           setSavedLeads(leads);
+          setHasMoreLeads(leads.length === leadsPageSize);
         }
       } catch (error) {
         console.warn('CardIQ leads failed to load.', error);
@@ -74,7 +84,33 @@ export function LeadsScreen({ onClose }: LeadsScreenProps) {
     return () => {
       mounted = false;
     };
-  }, [authLoading, isDevelopmentAuthBypass, user]);
+  }, [activeFilter, authLoading, isDevelopmentAuthBypass, query, user]);
+
+  async function handleLoadMoreLeads() {
+    if (!user || isDevelopmentAuthBypass || leadsLoadingMore) {
+      return;
+    }
+
+    setLeadsLoadingMore(true);
+    setErrorMessage(null);
+
+    try {
+      const nextLeads = await getLeads(user.id, {
+        limit: leadsPageSize,
+        offset: savedLeads.length,
+        search: query.trim() || undefined,
+        status: activeFilter === 'all' ? undefined : activeFilter,
+      });
+
+      setSavedLeads((current) => [...current, ...nextLeads]);
+      setHasMoreLeads(nextLeads.length === leadsPageSize);
+    } catch (error) {
+      console.warn('CardIQ leads failed to load more.', error);
+      setErrorMessage('Unable to load more leads.');
+    } finally {
+      setLeadsLoadingMore(false);
+    }
+  }
 
   const leads = useMemo(
     () =>
@@ -138,6 +174,15 @@ export function LeadsScreen({ onClose }: LeadsScreenProps) {
           {leads.map((lead) => (
             <LeadRow key={lead.id} lead={lead} onOpen={() => openLeadDetail(lead)} />
           ))}
+          {hasMoreLeads ? (
+            <Pressable
+              disabled={leadsLoadingMore}
+              onPress={handleLoadMoreLeads}
+              style={({ pressed }) => [styles.loadMoreButton, pressed ? styles.pressed : null, leadsLoadingMore ? styles.disabled : null]}
+            >
+              <Text style={styles.loadMoreText}>{leadsLoadingMore ? 'Loading...' : 'Load more'}</Text>
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
     </Screen>
@@ -239,6 +284,9 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
   },
+  disabled: {
+    opacity: 0.64,
+  },
   listCard: {
     backgroundColor: colors.card,
     borderColor: colors.border,
@@ -332,5 +380,15 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     fontSize: typography.sizes.caption,
     fontWeight: '700',
+  },
+  loadMoreButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  loadMoreText: {
+    color: colors.primary,
+    fontSize: typography.sizes.small,
+    fontWeight: '800',
   },
 });

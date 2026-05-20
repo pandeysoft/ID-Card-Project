@@ -27,19 +27,42 @@ export type UpdateLeadInput = Partial<
   Omit<CreateLeadInput, 'userId'>
 >;
 
+export type GetLeadsOptions = {
+  limit?: number;
+  offset?: number;
+  status?: LeadStatus;
+  search?: string;
+};
+
 function assertNoError(error: Error | null, fallbackMessage: string): void {
   if (error) {
     throw new Error(error.message || fallbackMessage);
   }
 }
 
-export async function getLeads(userId: string): Promise<Lead[]> {
-  const { data, error } = await supabase
+export async function getLeads(
+  userId: string,
+  options: GetLeadsOptions = {},
+): Promise<Lead[]> {
+  const limit = options.limit ?? 25;
+  const offset = options.offset ?? 0;
+  const search = options.search?.trim();
+  let query = supabase
     .from('leads')
     .select('*, contacts(*)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
-    .returns<LeadWithContactRow[]>();
+    .range(offset, offset + limit - 1);
+
+  if (options.status) {
+    query = query.eq('lead_status', options.status);
+  }
+
+  if (search) {
+    query = query.or(`source.ilike.%${search}%,contacts.name.ilike.%${search}%,contacts.headline.ilike.%${search}%`);
+  }
+
+  const { data, error } = await query.returns<LeadWithContactRow[]>();
 
   assertNoError(error, 'Unable to load leads.');
   return (data ?? []).map(mapLeadRowToLead);

@@ -34,19 +34,37 @@ export type UpdateContactInput = Partial<
   Omit<CreateContactInput, 'userId'>
 >;
 
+export type GetContactsOptions = {
+  limit?: number;
+  offset?: number;
+  search?: string;
+};
+
 function assertNoError(error: Error | null, fallbackMessage: string): void {
   if (error) {
     throw new Error(error.message || fallbackMessage);
   }
 }
 
-export async function getContacts(userId: string): Promise<SavedContact[]> {
-  const { data, error } = await supabase
+export async function getContacts(
+  userId: string,
+  options: GetContactsOptions = {},
+): Promise<SavedContact[]> {
+  const limit = options.limit ?? 25;
+  const offset = options.offset ?? 0;
+  const search = options.search?.trim();
+  let query = supabase
     .from('contacts')
     .select('*, contact_links(*)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
-    .returns<ContactWithLinksRow[]>();
+    .range(offset, offset + limit - 1);
+
+  if (search) {
+    query = query.or(`name.ilike.%${search}%,headline.ilike.%${search}%,email.ilike.%${search}%`);
+  }
+
+  const { data, error } = await query.returns<ContactWithLinksRow[]>();
 
   assertNoError(error, 'Unable to load contacts.');
   return (data ?? []).map(mapContactRowToContact);

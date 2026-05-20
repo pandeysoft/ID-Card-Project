@@ -22,11 +22,18 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
   const [loadedProfile, setLoadedProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadMessage, setLoadMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sharingVCard, setSharingVCard] = useState(false);
   const [savedContact, setSavedContact] = useState<SavedContact | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const displayProfile = useMemo(() => loadedProfile ?? profile ?? defaultProfile, [loadedProfile, profile]);
+  const displayProfile = useMemo(() => {
+    if (publicSlug) {
+      return loadedProfile;
+    }
+
+    return profile ?? defaultProfile;
+  }, [loadedProfile, profile, publicSlug]);
 
   useEffect(() => {
     let mounted = true;
@@ -38,6 +45,8 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
 
       setLoadingProfile(true);
       setLoadMessage(null);
+      setLoadError(null);
+      setLoadedProfile(null);
 
       try {
         const publicProfile = await getPublicProfileBySlug(publicSlug);
@@ -45,13 +54,13 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
         if (mounted && publicProfile) {
           setLoadedProfile(mapPublicProfileToProfile(publicProfile, publicSlug));
         } else if (mounted) {
-          setLoadMessage('Using preview profile.');
+          setLoadError('Profile not found.');
         }
       } catch (error) {
         console.warn('CardIQ public profile failed to load.', error);
 
         if (mounted) {
-          setLoadMessage('Unable to load public profile. Showing preview profile.');
+          setLoadError('Unable to load public profile.');
         }
       } finally {
         if (mounted) {
@@ -68,6 +77,10 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
   }, [publicSlug]);
 
   async function handleSaveContact() {
+    if (!displayProfile) {
+      return;
+    }
+
     setSaving(true);
     setErrorMessage(null);
 
@@ -85,6 +98,10 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
   }
 
   async function handleShareVCard() {
+    if (!displayProfile) {
+      return;
+    }
+
     setSharingVCard(true);
     setErrorMessage(null);
 
@@ -107,6 +124,14 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
         ) : null}
         {loadingProfile ? <Text style={styles.statusText}>Loading public profile...</Text> : null}
         {loadMessage ? <Text style={styles.statusText}>{loadMessage}</Text> : null}
+        {loadError ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>{loadError}</Text>
+            <Text style={styles.emptyCopy}>This CardIQ profile is unavailable or no longer public.</Text>
+          </View>
+        ) : null}
+        {displayProfile ? (
+          <>
         <View style={styles.header}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{getInitials(displayProfile.name)}</Text>
@@ -139,6 +164,8 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
         <Pressable disabled={sharingVCard} onPress={handleShareVCard} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null, sharingVCard ? styles.disabled : null]}>
           <Text style={styles.secondaryButtonText}>{sharingVCard ? 'Preparing vCard...' : 'Save vCard'}</Text>
         </Pressable>
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -260,6 +287,26 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.small,
     fontWeight: '700',
     marginBottom: spacing.sm,
+  },
+  emptyState: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: spacing.lg,
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: typography.sizes.heading,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  emptyCopy: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.body,
+    lineHeight: 23,
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
   avatar: {
     alignItems: 'center',
