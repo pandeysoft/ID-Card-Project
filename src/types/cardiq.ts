@@ -75,6 +75,30 @@ export interface AccountSettings {
   updatedAt?: Timestamp;
 }
 
+export interface NetworkingSession {
+  id: string;
+  hostUserId: string;
+  status: "active" | "ended";
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface NearbyUser {
+  id: string;
+  displayName: string;
+  headline?: string;
+  distanceLabel?: string;
+  lastSeenAt: Timestamp;
+}
+
+export interface SessionParticipant {
+  id: string;
+  sessionId: string;
+  userId: string;
+  joinedAt: Timestamp;
+  leftAt?: Timestamp;
+}
+
 export interface ProfileLink {
   id: string;
   profileId: string;

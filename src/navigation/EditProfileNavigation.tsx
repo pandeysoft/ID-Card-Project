@@ -4,6 +4,7 @@ import { EditProfileScreen, type EditProfileForm } from '../screens/EditProfileS
 import { LeadCaptureScreen } from '../screens/LeadCaptureScreen';
 import { LeadDetailScreen } from '../screens/LeadDetailScreen';
 import { LeadsScreen } from '../screens/LeadsScreen';
+import { NetworkingScreen } from '../screens/NetworkingScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { PublicProfileScreen } from '../screens/PublicProfileScreen';
 import type { Lead, Profile, SavedContact } from '../types';
@@ -15,6 +16,7 @@ type EditProfileNavigationValue = {
   openLeadDetail: (lead: Lead) => void;
   openLeadCapturePreview: () => void;
   openLeadsPreview: () => void;
+  openNetworkingPreview: () => void;
   openOnboardingPreview: () => void;
   openPublicProfilePreview: (publicSlug?: string) => void;
 };
@@ -32,6 +34,7 @@ export function RootNavigator() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showingLeadCapture, setShowingLeadCapture] = useState(false);
   const [showingLeads, setShowingLeads] = useState(false);
+  const [showingNetworking, setShowingNetworking] = useState(false);
   const [showingOnboarding, setShowingOnboarding] = useState(false);
   const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(null);
   const [showingPublicProfile, setShowingPublicProfile] = useState(false);
@@ -44,6 +47,7 @@ export function RootNavigator() {
       openLeadDetail: (lead: Lead) => setSelectedLead(lead),
       openLeadCapturePreview: () => setShowingLeadCapture(true),
       openLeadsPreview: () => setShowingLeads(true),
+      openNetworkingPreview: () => setShowingNetworking(true),
       openOnboardingPreview: () => setShowingOnboarding(true),
       openPublicProfilePreview: (publicSlug?: string) => {
         setPublicProfileSlug(publicSlug ?? null);
@@ -72,6 +76,8 @@ export function RootNavigator() {
         <LeadCaptureScreen onClose={() => setShowingLeadCapture(false)} />
       ) : showingLeads ? (
         <LeadsScreen onClose={() => setShowingLeads(false)} />
+      ) : showingNetworking ? (
+        <NetworkingScreen onClose={() => setShowingNetworking(false)} />
       ) : showingOnboarding ? (
         <OnboardingScreen onClose={() => setShowingOnboarding(false)} />
       ) : showingPublicProfile ? (
