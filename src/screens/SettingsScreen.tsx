@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
+import { useAuth } from '../contexts';
 import { mockUser } from '../lib/mockData';
+import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
+import { signOut } from '../services/authService';
 import { colors, spacing, typography } from '../theme';
 
 const sections = [
@@ -27,6 +31,26 @@ const sections = [
 ];
 
 export function SettingsScreen() {
+  const { clearDevelopmentAuthBypass, isDevelopmentAuthBypass } = useAuth();
+  const { openPublicProfilePreview } = useEditProfileNavigation();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+
+    try {
+      if (isDevelopmentAuthBypass) {
+        clearDevelopmentAuthBypass();
+      } else {
+        await signOut();
+      }
+    } catch (error) {
+      console.warn('CardIQ sign out failed.', error);
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   return (
     <Screen title="Settings" subtitle="Account, plan, privacy, and app preferences will live here.">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -58,6 +82,16 @@ export function SettingsScreen() {
               {section.rows.map((row) => (
                 <SettingsRow key={row} label={row} />
               ))}
+              {section.title === 'Account' ? (
+                <SettingsRow
+                  disabled={signingOut}
+                  label={signingOut ? 'Signing out...' : 'Sign Out'}
+                  onPress={handleSignOut}
+                />
+              ) : null}
+              {__DEV__ && section.title === 'Profiles' ? (
+                <SettingsRow label="Preview Public Profile" onPress={openPublicProfilePreview} />
+              ) : null}
             </View>
           </View>
         ))}
@@ -66,9 +100,21 @@ export function SettingsScreen() {
   );
 }
 
-function SettingsRow({ label }: { label: string }) {
+function SettingsRow({
+  disabled = false,
+  label,
+  onPress,
+}: {
+  disabled?: boolean;
+  label: string;
+  onPress?: () => void;
+}) {
   return (
-    <Pressable onPress={() => undefined} style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}>
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed ? styles.pressed : null, disabled ? styles.disabled : null]}
+    >
       <View style={styles.rowIcon}>
         <Text style={styles.rowIconText}>{label[0]}</Text>
       </View>
@@ -202,6 +248,9 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+  },
+  disabled: {
+    opacity: 0.64,
   },
   rowIcon: {
     alignItems: 'center',

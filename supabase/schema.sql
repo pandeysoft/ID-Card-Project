@@ -37,6 +37,7 @@ create table if not exists public.profiles (
   public_slug text not null unique,
   name text not null,
   headline text,
+  company text,
   bio text,
   email text,
   phone text,

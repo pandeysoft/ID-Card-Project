@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Screen } from '../components/Screen';
+import { useAuth } from '../contexts';
 import { mockLeads, mockSavedContacts } from '../lib/mockData';
+import { getContacts } from '../services/contactService';
 import { colors, spacing, typography } from '../theme';
 import type { SavedContact } from '../types';
 
@@ -15,12 +17,61 @@ const filters: { label: string; value: ContactFilter }[] = [
 ];
 
 export function ContactsScreen() {
+  const { isDevelopmentAuthBypass, user, loading: authLoading } = useAuth();
+  const [savedContacts, setSavedContacts] = useState<SavedContact[]>([...mockSavedContacts]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<ContactFilter>('all');
 
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadContacts() {
+      if (authLoading) {
+        return;
+      }
+
+      if (!user || isDevelopmentAuthBypass) {
+        setSavedContacts([...mockSavedContacts]);
+        setContactsLoading(false);
+        setErrorMessage(null);
+        return;
+      }
+
+      setContactsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const contacts = await getContacts(user.id);
+
+        if (mounted) {
+          setSavedContacts(contacts);
+        }
+      } catch (error) {
+        console.warn('CardIQ contacts failed to load.', error);
+
+        if (mounted) {
+          setErrorMessage('Unable to load contacts.');
+          setSavedContacts([]);
+        }
+      } finally {
+        if (mounted) {
+          setContactsLoading(false);
+        }
+      }
+    }
+
+    void loadContacts();
+
+    return () => {
+      mounted = false;
+    };
+  }, [authLoading, isDevelopmentAuthBypass, user]);
+
   const contacts = useMemo(
     () =>
-      mockSavedContacts.filter((contact) => {
+      savedContacts.filter((contact) => {
         const haystack = [
           contact.snapshot.name,
           contact.snapshot.headline,
@@ -39,7 +90,7 @@ export function ContactsScreen() {
 
         return matchesQuery && matchesFilter;
       }),
-    [activeFilter, query],
+    [activeFilter, query, savedContacts],
   );
 
   return (
@@ -86,8 +137,10 @@ export function ContactsScreen() {
         <View style={styles.listCard}>
           <View style={styles.listHeader}>
             <Text style={styles.listTitle}>Saved connections</Text>
-            <Text style={styles.count}>{contacts.length}</Text>
+            <Text style={styles.count}>{contactsLoading ? '...' : contacts.length}</Text>
           </View>
+          {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
+          {contactsLoading ? <Text style={styles.loading}>Loading contacts...</Text> : null}
           {contacts.map((contact) => (
             <ContactRow key={contact.id} contact={contact} />
           ))}
@@ -230,6 +283,18 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: typography.sizes.caption,
     fontWeight: '800',
+  },
+  loading: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.small,
+    fontWeight: '700',
+    paddingVertical: spacing.md,
+  },
+  error: {
+    color: colors.danger,
+    fontSize: typography.sizes.small,
+    fontWeight: '700',
+    paddingVertical: spacing.md,
   },
   row: {
     alignItems: 'center',

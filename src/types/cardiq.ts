@@ -44,6 +44,7 @@ export interface Profile {
   publicSlug: string;
   name: string;
   headline: string;
+  company?: string;
   bio: string;
   email?: string;
   phone?: string;

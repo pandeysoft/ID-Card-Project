@@ -1,8 +1,81 @@
+import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
+import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
 import { colors, spacing, typography } from '../theme';
 
+type ScanMode = 'menu' | 'qr';
+
 export function ScanScreen() {
+  const { openPublicProfilePreview } = useEditProfileNavigation();
+  const [mode, setMode] = useState<ScanMode>('menu');
+  const [permission, requestPermission] = useCameraPermissions();
+  const [scannedValue, setScannedValue] = useState<string | null>(null);
+
+  async function openQrScanner() {
+    setMode('qr');
+    setScannedValue(null);
+
+    if (!permission?.granted) {
+      await requestPermission();
+    }
+  }
+
+  function handleBarcodeScanned(result: BarcodeScanningResult) {
+    setScannedValue((current) => {
+      if (current) {
+        return current;
+      }
+
+      const publicSlug = getCardIqPublicSlug(result.data);
+
+      if (publicSlug) {
+        openPublicProfilePreview(publicSlug);
+      }
+
+      return result.data;
+    });
+  }
+
+  if (mode === 'qr') {
+    return (
+      <Screen title="Scan QR" subtitle="Point your camera at a CardIQ QR code.">
+        <View style={styles.scannerCard}>
+          {permission?.granted ? (
+            <CameraView
+              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+              onBarcodeScanned={scannedValue ? undefined : handleBarcodeScanned}
+              style={styles.camera}
+            />
+          ) : (
+            <View style={styles.permissionState}>
+              <Text style={styles.emptyTitle}>Camera permission needed</Text>
+              <Text style={styles.emptyCopy}>Allow camera access to scan QR codes.</Text>
+              <Pressable onPress={requestPermission} style={({ pressed }) => [styles.permissionButton, pressed ? styles.pressed : null]}>
+                <Text style={styles.permissionButtonText}>Allow Camera</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        {scannedValue ? (
+          <View style={styles.resultCard}>
+            <Text style={styles.sectionTitle}>Scanned value</Text>
+            <Text style={styles.resultText}>{scannedValue}</Text>
+            <Pressable onPress={() => setScannedValue(null)} style={({ pressed }) => [styles.permissionButton, pressed ? styles.pressed : null]}>
+              <Text style={styles.permissionButtonText}>Scan Again</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        <Pressable onPress={() => setMode('menu')} style={({ pressed }) => [styles.backButton, pressed ? styles.pressed : null]}>
+          <Text style={styles.backButtonText}>Back</Text>
+        </Pressable>
+      </Screen>
+    );
+  }
+
   return (
     <Screen title="Scan" subtitle="Capture a new connection quickly when scanning is enabled.">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -20,6 +93,7 @@ export function ScanScreen() {
             icon="QR"
             title="Scan QR Code"
             copy="Open a CardIQ profile instantly from a digital card."
+            onPress={openQrScanner}
             primary
           />
           <ActionCard
@@ -51,18 +125,20 @@ export function ScanScreen() {
 
 function ActionCard({
   icon,
+  onPress,
   title,
   copy,
   primary,
 }: {
   icon: string;
+  onPress?: () => void;
   title: string;
   copy: string;
   primary?: boolean;
 }) {
   return (
     <Pressable
-      onPress={() => undefined}
+      onPress={onPress}
       style={({ pressed }) => [
         styles.actionCard,
         primary ? styles.primaryActionCard : null,
@@ -85,6 +161,21 @@ function ActionCard({
       <Text style={[styles.chevron, primary ? styles.primaryChevron : null]}>{'>'}</Text>
     </Pressable>
   );
+}
+
+function getCardIqPublicSlug(value: string): string | null {
+  try {
+    const url = new URL(value);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+
+    if (url.hostname === 'cardiq.app' && pathParts[0] === 'u' && pathParts[1]) {
+      return decodeURIComponent(pathParts[1]);
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -258,5 +349,65 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+  },
+  scannerCard: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: 28,
+    borderWidth: 1,
+    height: 360,
+    overflow: 'hidden',
+  },
+  camera: {
+    flex: 1,
+  },
+  permissionState: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  permissionButton: {
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    justifyContent: 'center',
+    marginTop: spacing.md,
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+  },
+  permissionButtonText: {
+    color: colors.surface,
+    fontSize: typography.sizes.small,
+    fontWeight: '800',
+  },
+  resultCard: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    marginTop: spacing.md,
+    padding: spacing.md,
+  },
+  resultText: {
+    color: colors.text,
+    fontSize: typography.sizes.body,
+    fontWeight: '700',
+    marginTop: spacing.sm,
+  },
+  backButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    justifyContent: 'center',
+    marginTop: spacing.md,
+    minHeight: 44,
+  },
+  backButtonText: {
+    color: colors.text,
+    fontSize: typography.sizes.small,
+    fontWeight: '800',
   },
 });

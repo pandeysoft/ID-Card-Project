@@ -9,17 +9,22 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { signInWithEmail } from '../services/authService';
+import { useAuth } from '../contexts';
+import { signInWithEmail, signInWithGoogle } from '../services/authService';
 import { colors, spacing, typography } from '../theme';
 
+type AuthMethod = 'email' | 'google' | 'demo';
+
 export function AuthScreen() {
+  const { enableDevelopmentAuthBypass } = useAuth();
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loadingMethod, setLoadingMethod] = useState<AuthMethod | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const loading = loadingMethod !== null;
 
   async function handleSignIn() {
-    setLoading(true);
+    setLoadingMethod('email');
     setErrorMessage(null);
     setSent(false);
 
@@ -33,8 +38,33 @@ export function AuthScreen() {
           : 'Unable to send sign-in link.',
       );
     } finally {
-      setLoading(false);
+      setLoadingMethod(null);
     }
+  }
+
+  async function handleGoogleSignIn() {
+    setLoadingMethod('google');
+    setErrorMessage(null);
+    setSent(false);
+
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to start Google sign-in.',
+      );
+    } finally {
+      setLoadingMethod(null);
+    }
+  }
+
+  function handleDemoSignIn() {
+    setLoadingMethod('demo');
+    setErrorMessage(null);
+    setSent(false);
+    enableDevelopmentAuthBypass();
   }
 
   return (
@@ -48,6 +78,20 @@ export function AuthScreen() {
           <Text style={styles.subtitle}>
             Sign in securely to manage your digital identity and shared profiles.
           </Text>
+
+          <Pressable
+            disabled={loading}
+            onPress={handleGoogleSignIn}
+            style={({ pressed }) => [
+              styles.googleButton,
+              pressed ? styles.pressed : null,
+              loading ? styles.disabledButton : null,
+            ]}
+          >
+            <Text style={styles.googleButtonText}>
+              {loadingMethod === 'google' ? 'Opening Google...' : 'Continue with Google'}
+            </Text>
+          </Pressable>
 
           <TextInput
             autoCapitalize="none"
@@ -66,8 +110,29 @@ export function AuthScreen() {
           {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
           {sent ? (
             <Text style={styles.success}>
-              Check your email for a secure sign-in link.
+              Check your inbox and spam folder. Supabase emails can take a few minutes.
             </Text>
+          ) : null}
+
+          {__DEV__ ? (
+            <>
+              <Text style={styles.debugNote}>
+                For local testing, check Supabase Dashboard -&gt; Authentication -&gt; Logs.
+              </Text>
+              <Pressable
+                disabled={loading}
+                onPress={handleDemoSignIn}
+                style={({ pressed }) => [
+                  styles.demoButton,
+                  pressed ? styles.pressed : null,
+                  loading ? styles.disabledButton : null,
+                ]}
+              >
+                <Text style={styles.demoButtonText}>
+                  {loadingMethod === 'demo' ? 'Continuing...' : 'Continue as Demo User'}
+                </Text>
+              </Pressable>
+            </>
           ) : null}
 
           <Pressable
@@ -80,7 +145,7 @@ export function AuthScreen() {
             ]}
           >
             <Text style={styles.buttonText}>
-              {loading ? 'Sending...' : 'Send sign-in link'}
+              {loadingMethod === 'email' ? 'Sending...' : 'Continue with Email'}
             </Text>
           </Pressable>
 
@@ -147,11 +212,39 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     minHeight: 52,
   },
+  googleButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+    minHeight: 52,
+  },
+  demoButton: {
+    alignItems: 'center',
+    backgroundColor: colors.primarySoft,
+    borderRadius: 16,
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    minHeight: 48,
+  },
   disabledButton: {
     opacity: 0.72,
   },
   buttonText: {
     color: colors.surface,
+    fontSize: typography.sizes.body,
+    fontWeight: '800',
+  },
+  googleButtonText: {
+    color: colors.text,
+    fontSize: typography.sizes.body,
+    fontWeight: '800',
+  },
+  demoButtonText: {
+    color: colors.primary,
     fontSize: typography.sizes.body,
     fontWeight: '800',
   },
@@ -164,6 +257,13 @@ const styles = StyleSheet.create({
     color: colors.success,
     fontSize: typography.sizes.small,
     marginTop: spacing.sm,
+  },
+  debugNote: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.caption,
+    lineHeight: 18,
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
   note: {
     color: colors.mutedText,

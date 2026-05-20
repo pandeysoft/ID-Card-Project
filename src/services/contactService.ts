@@ -6,8 +6,16 @@ import {
   type ContactWithLinksRow,
 } from './mappers/contactMapper';
 import type {
+  Profile,
   SavedContact,
 } from '../types';
+
+export type ContactSource =
+  | 'qr'
+  | 'nfc'
+  | 'manual'
+  | 'business_card_scan'
+  | 'lead_capture';
 
 export type CreateContactInput = {
   userId: string;
@@ -74,6 +82,25 @@ export async function createContact(
   }
 
   return mapContactRowToContact(data);
+}
+
+export async function createContactFromProfile(
+  profile: Profile,
+  ownerUserId: string,
+  source: ContactSource,
+): Promise<SavedContact> {
+  return createContact({
+    userId: ownerUserId,
+    profileId: profile.id,
+    name: profile.name,
+    headline: profile.company ? `${profile.headline} at ${profile.company}` : profile.headline,
+    bio: profile.bio,
+    email: profile.email,
+    phone: profile.phone,
+    location: profile.location,
+    notes: `Source: ${source}`,
+    tags: [source],
+  });
 }
 
 export async function updateContact(

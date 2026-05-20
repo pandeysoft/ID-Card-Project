@@ -11,6 +11,7 @@ export type ProfileRow = {
   public_slug: string;
   name: string;
   headline: string | null;
+  company?: string | null;
   bio: string | null;
   email: string | null;
   phone: string | null;
@@ -43,6 +44,7 @@ export function mapProfileRowToProfile(row: ProfileWithLinksRow): Profile {
     publicSlug: row.public_slug,
     name: row.name,
     headline: row.headline ?? '',
+    company: row.company ?? undefined,
     bio: row.bio ?? '',
     email: row.email ?? undefined,
     phone: row.phone ?? undefined,
@@ -62,6 +64,7 @@ export function mapProfileToInsert(profile: CreateProfileInput) {
     public_slug: profile.publicSlug,
     name: profile.name,
     headline: profile.headline,
+    company: profile.company ?? null,
     bio: profile.bio,
     email: profile.email ?? null,
     phone: profile.phone ?? null,
@@ -77,6 +80,7 @@ export function mapProfileUpdatesToRow(updates: UpdateProfileInput) {
     ...(updates.publicSlug ? { public_slug: updates.publicSlug } : {}),
     ...(updates.name ? { name: updates.name } : {}),
     ...(updates.headline ? { headline: updates.headline } : {}),
+    ...(updates.company !== undefined ? { company: updates.company } : {}),
     ...(updates.bio ? { bio: updates.bio } : {}),
     ...(updates.email !== undefined ? { email: updates.email } : {}),
     ...(updates.phone !== undefined ? { phone: updates.phone } : {}),
@@ -86,7 +90,7 @@ export function mapProfileUpdatesToRow(updates: UpdateProfileInput) {
   };
 }
 
-function mapProfileLinkRowToProfileLink(row: ProfileLinkRow): ProfileLink {
+export function mapProfileLinkRowToProfileLink(row: ProfileLinkRow): ProfileLink {
   return {
     id: row.id,
     profileId: row.profile_id,
