@@ -10,6 +10,10 @@ export type AccountPlan = "free" | "plus" | "business" | "enterprise";
 
 export type UserRole = "user" | "admin" | "owner";
 
+export type OrganizationRole = "owner" | "admin" | "member";
+
+export type ProfileVisibility = "private" | "contacts" | "public";
+
 export type LeadStatus =
   | "new"
   | "contacted"
@@ -25,6 +29,50 @@ export interface User {
   accountPlan: AccountPlan;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface Organization {
+  id: string;
+  ownerUserId: string;
+  name: string;
+  slug: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface OrganizationMember {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: OrganizationRole;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface PrivacySettings {
+  userId: string;
+  profileVisibility: ProfileVisibility;
+  searchableByEmail: boolean;
+  searchableByPhone: boolean;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+export interface SharingSettings {
+  userId: string;
+  contactSyncEnabled: boolean;
+  leadSharingRequiresConsent: boolean;
+  allowVCardExport: boolean;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+export interface AccountSettings {
+  userId: string;
+  privacy: PrivacySettings;
+  sharing: SharingSettings;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export interface ProfileLink {
