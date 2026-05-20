@@ -11,6 +11,7 @@ export * as contactService from './contactService';
 export * as healthService from './healthService';
 export * as leadService from './leadService';
 export * as networkingSessionService from './networkingSessionService';
+export * as nfcService from './nfcService';
 export * as organizationService from './organizationService';
 export * as publicProfileService from './publicProfileService';
 export * as vcardService from './vcardService';
