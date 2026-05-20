@@ -5,7 +5,13 @@ import {
   mapLeadUpdatesToRow,
   type LeadWithContactRow,
 } from './mappers/leadMapper';
-import type { Lead, LeadStatus } from '../types';
+import type { Lead, LeadStatus, Profile } from '../types';
+
+export type LeadCaptureSource =
+  | 'qr_booth'
+  | 'manual'
+  | 'business_card_scan'
+  | 'public_profile_form';
 
 export type CreateLeadInput = {
   userId: string;
@@ -65,6 +71,20 @@ export async function createLead(lead: CreateLeadInput): Promise<Lead> {
   }
 
   return mapLeadRowToLead(data);
+}
+
+export async function createLeadFromProfile(
+  profile: Profile,
+  businessUserId: string,
+  source: LeadCaptureSource,
+): Promise<Lead> {
+  return createLead({
+    userId: businessUserId,
+    profileId: profile.id,
+    status: 'new',
+    source,
+    notes: `Lead captured from ${profile.name}.`,
+  });
 }
 
 export async function updateLead(
