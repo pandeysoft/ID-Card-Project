@@ -32,7 +32,7 @@ const sections = [
 
 export function SettingsScreen() {
   const { clearDevelopmentAuthBypass, isDevelopmentAuthBypass } = useAuth();
-  const { openLeadCapturePreview, openPublicProfilePreview } = useEditProfileNavigation();
+  const { openLeadCapturePreview, openLeadsPreview, openPublicProfilePreview } = useEditProfileNavigation();
   const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
@@ -93,6 +93,7 @@ export function SettingsScreen() {
                 <>
                   <SettingsRow label="Preview Public Profile" onPress={openPublicProfilePreview} />
                   <SettingsRow label="Preview Lead Capture" onPress={openLeadCapturePreview} />
+                  <SettingsRow label="Preview Leads" onPress={openLeadsPreview} />
                 </>
               ) : null}
             </View>

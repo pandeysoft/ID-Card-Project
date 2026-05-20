@@ -2,14 +2,18 @@ import { createContext, useContext, useMemo, useState } from 'react';
 import { ContactDetailScreen } from '../screens/ContactDetailScreen';
 import { EditProfileScreen, type EditProfileForm } from '../screens/EditProfileScreen';
 import { LeadCaptureScreen } from '../screens/LeadCaptureScreen';
+import { LeadDetailScreen } from '../screens/LeadDetailScreen';
+import { LeadsScreen } from '../screens/LeadsScreen';
 import { PublicProfileScreen } from '../screens/PublicProfileScreen';
-import type { Profile, SavedContact } from '../types';
+import type { Lead, Profile, SavedContact } from '../types';
 import { RootTabs } from './RootTabs';
 
 type EditProfileNavigationValue = {
   openEditProfile: (profile: Profile, onSave: (form: EditProfileForm) => Promise<void> | void) => void;
   openContactDetail: (contact: SavedContact) => void;
+  openLeadDetail: (lead: Lead) => void;
   openLeadCapturePreview: () => void;
+  openLeadsPreview: () => void;
   openPublicProfilePreview: (publicSlug?: string) => void;
 };
 
@@ -23,7 +27,9 @@ const EditProfileNavigationContext = createContext<EditProfileNavigationValue | 
 export function RootNavigator() {
   const [editingProfile, setEditingProfile] = useState<EditingProfileState | null>(null);
   const [selectedContact, setSelectedContact] = useState<SavedContact | null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showingLeadCapture, setShowingLeadCapture] = useState(false);
+  const [showingLeads, setShowingLeads] = useState(false);
   const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(null);
   const [showingPublicProfile, setShowingPublicProfile] = useState(false);
   const value = useMemo(
@@ -32,7 +38,9 @@ export function RootNavigator() {
         setEditingProfile({ profile, onSave });
       },
       openContactDetail: (contact: SavedContact) => setSelectedContact(contact),
+      openLeadDetail: (lead: Lead) => setSelectedLead(lead),
       openLeadCapturePreview: () => setShowingLeadCapture(true),
+      openLeadsPreview: () => setShowingLeads(true),
       openPublicProfilePreview: (publicSlug?: string) => {
         setPublicProfileSlug(publicSlug ?? null);
         setShowingPublicProfile(true);
@@ -54,8 +62,12 @@ export function RootNavigator() {
         />
       ) : selectedContact ? (
         <ContactDetailScreen contact={selectedContact} onBack={() => setSelectedContact(null)} />
+      ) : selectedLead ? (
+        <LeadDetailScreen lead={selectedLead} onBack={() => setSelectedLead(null)} />
       ) : showingLeadCapture ? (
         <LeadCaptureScreen onClose={() => setShowingLeadCapture(false)} />
+      ) : showingLeads ? (
+        <LeadsScreen onClose={() => setShowingLeads(false)} />
       ) : showingPublicProfile ? (
         <PublicProfileScreen
           onClose={() => setShowingPublicProfile(false)}
