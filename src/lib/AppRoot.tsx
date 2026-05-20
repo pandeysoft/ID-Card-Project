@@ -1,4 +1,5 @@
 import { NavigationContainer } from '@react-navigation/native';
+import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, OnboardingProvider, useAuth, useOnboarding } from '../contexts';
@@ -21,8 +22,30 @@ export function AppRoot() {
 }
 
 function AuthGate() {
-  const { loading, isAuthenticated } = useAuth();
-  const { hasCompletedOnboarding, loading: onboardingLoading } = useOnboarding();
+  const { loading, isAuthenticated, isDevelopmentAuthBypass, user } = useAuth();
+  const {
+    hasCompletedOnboarding,
+    loadOnboardingForUser,
+    loading: onboardingLoading,
+  } = useOnboarding();
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    if (!isAuthenticated || !user) {
+      void loadOnboardingForUser(null);
+      return;
+    }
+
+    void loadOnboardingForUser({
+      id: user.id,
+      email: user.email,
+      displayName: getDisplayName(user.user_metadata?.display_name),
+      isLocalOnly: isDevelopmentAuthBypass,
+    });
+  }, [isAuthenticated, isDevelopmentAuthBypass, loadOnboardingForUser, loading, user]);
 
   if (loading) {
     return (
@@ -63,3 +86,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+function getDisplayName(value: unknown) {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}

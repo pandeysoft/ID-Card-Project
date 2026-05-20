@@ -1,6 +1,7 @@
 export { supabase } from './supabase';
 export * as authService from './authService';
 export * as accountSettingsService from './accountSettingsService';
+export * as appUserService from './appUserService';
 export * as avatarService from './avatarService';
 export * as bootstrapService from './bootstrapService';
 export * as businessCardOcrService from './businessCardOcrService';

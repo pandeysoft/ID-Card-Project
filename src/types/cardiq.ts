@@ -31,6 +31,16 @@ export interface User {
   updatedAt: Timestamp;
 }
 
+export interface AppUser {
+  id: string;
+  email?: string;
+  displayName?: string;
+  onboardingCompleted: boolean;
+  onboardingCompletedAt?: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 export interface Organization {
   id: string;
   ownerUserId: string;

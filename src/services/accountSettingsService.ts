@@ -32,8 +32,14 @@ type SharingSettingsRow = {
   updated_at?: string;
 };
 
+type AccountSettingsRow = {
+  user_id: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
 const defaultPrivacySettings: Omit<PrivacySettings, 'userId'> = {
-  profileVisibility: 'contacts',
+  profileVisibility: 'private',
   searchableByEmail: false,
   searchableByPhone: false,
 };
@@ -51,7 +57,8 @@ function assertNoError(error: Error | null, fallbackMessage: string): void {
 }
 
 export async function getAccountSettings(userId: string): Promise<AccountSettings> {
-  const [privacy, sharing] = await Promise.all([
+  const [account, privacy, sharing] = await Promise.all([
+    ensureAccountSettings(userId),
     getPrivacySettings(userId),
     getSharingSettings(userId),
   ]);
@@ -60,8 +67,8 @@ export async function getAccountSettings(userId: string): Promise<AccountSetting
     userId,
     privacy,
     sharing,
-    updatedAt: privacy.updatedAt ?? sharing.updatedAt,
-    createdAt: privacy.createdAt ?? sharing.createdAt,
+    updatedAt: account.updated_at ?? privacy.updatedAt ?? sharing.updatedAt,
+    createdAt: account.created_at ?? privacy.createdAt ?? sharing.createdAt,
   };
 }
 
@@ -69,6 +76,8 @@ export async function updateAccountSettings(
   userId: string,
   updates: UpdateAccountSettingsInput,
 ): Promise<AccountSettings> {
+  await ensureAccountSettings(userId);
+
   if (updates.privacy) {
     await updatePrivacySettings(userId, updates.privacy);
   }
@@ -78,6 +87,22 @@ export async function updateAccountSettings(
   }
 
   return getAccountSettings(userId);
+}
+
+async function ensureAccountSettings(userId: string): Promise<AccountSettingsRow> {
+  const { data, error } = await supabase
+    .from('account_settings')
+    .upsert({ user_id: userId }, { onConflict: 'user_id' })
+    .select('*')
+    .returns<AccountSettingsRow[]>()
+    .single();
+
+  assertNoError(error, 'Unable to load account settings.');
+  if (!data) {
+    throw new Error('Unable to load account settings.');
+  }
+
+  return data;
 }
 
 export async function getPrivacySettings(userId: string): Promise<PrivacySettings> {

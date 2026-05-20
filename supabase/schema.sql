@@ -19,6 +19,40 @@ create table if not exists public.organizations (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.app_users (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  display_name text,
+  onboarding_completed boolean not null default false,
+  onboarding_completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.account_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.privacy_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  profile_visibility text not null default 'private' check (profile_visibility in ('private', 'contacts', 'public')),
+  searchable_by_email boolean not null default false,
+  searchable_by_phone boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.sharing_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  contact_sync_enabled boolean not null default false,
+  lead_sharing_requires_consent boolean not null default true,
+  allow_vcard_export boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.organization_members (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
@@ -95,7 +129,7 @@ create table if not exists public.leads (
   organization_id uuid references public.organizations(id) on delete set null,
   contact_id uuid references public.contacts(id) on delete set null,
   profile_id uuid references public.profiles(id) on delete set null,
-  lead_status text not null default 'new' check (lead_status in ('new', 'contacted', 'qualified', 'won', 'lost')),
+  lead_status text not null default 'new' check (lead_status in ('new', 'contacted', 'qualified', 'converted', 'lost')),
   source text,
   notes text,
   next_follow_up_at timestamptz,
@@ -143,6 +177,7 @@ create table if not exists public.entitlements (
 );
 
 create index if not exists organizations_owner_user_id_idx on public.organizations(owner_user_id);
+create index if not exists app_users_onboarding_completed_idx on public.app_users(onboarding_completed);
 create index if not exists organization_members_user_id_idx on public.organization_members(user_id);
 create index if not exists organization_members_organization_id_idx on public.organization_members(organization_id);
 create index if not exists profiles_user_id_idx on public.profiles(user_id);
@@ -168,6 +203,14 @@ create index if not exists entitlements_organization_id_idx on public.entitlemen
 
 drop trigger if exists set_organizations_updated_at on public.organizations;
 create trigger set_organizations_updated_at before update on public.organizations for each row execute function public.set_updated_at();
+drop trigger if exists set_app_users_updated_at on public.app_users;
+create trigger set_app_users_updated_at before update on public.app_users for each row execute function public.set_updated_at();
+drop trigger if exists set_account_settings_updated_at on public.account_settings;
+create trigger set_account_settings_updated_at before update on public.account_settings for each row execute function public.set_updated_at();
+drop trigger if exists set_privacy_settings_updated_at on public.privacy_settings;
+create trigger set_privacy_settings_updated_at before update on public.privacy_settings for each row execute function public.set_updated_at();
+drop trigger if exists set_sharing_settings_updated_at on public.sharing_settings;
+create trigger set_sharing_settings_updated_at before update on public.sharing_settings for each row execute function public.set_updated_at();
 drop trigger if exists set_organization_members_updated_at on public.organization_members;
 create trigger set_organization_members_updated_at before update on public.organization_members for each row execute function public.set_updated_at();
 drop trigger if exists set_profiles_updated_at on public.profiles;
@@ -188,6 +231,10 @@ drop trigger if exists set_entitlements_updated_at on public.entitlements;
 create trigger set_entitlements_updated_at before update on public.entitlements for each row execute function public.set_updated_at();
 
 alter table public.organizations enable row level security;
+alter table public.app_users enable row level security;
+alter table public.account_settings enable row level security;
+alter table public.privacy_settings enable row level security;
+alter table public.sharing_settings enable row level security;
 alter table public.organization_members enable row level security;
 alter table public.profiles enable row level security;
 alter table public.profile_links enable row level security;
@@ -202,6 +249,26 @@ drop policy if exists "organizations_owner_all" on public.organizations;
 create policy "organizations_owner_all" on public.organizations
   for all using (owner_user_id = auth.uid())
   with check (owner_user_id = auth.uid());
+
+drop policy if exists "app_users_self_all" on public.app_users;
+create policy "app_users_self_all" on public.app_users
+  for all using (id = auth.uid())
+  with check (id = auth.uid());
+
+drop policy if exists "account_settings_owner_all" on public.account_settings;
+create policy "account_settings_owner_all" on public.account_settings
+  for all using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists "privacy_settings_owner_all" on public.privacy_settings;
+create policy "privacy_settings_owner_all" on public.privacy_settings
+  for all using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists "sharing_settings_owner_all" on public.sharing_settings;
+create policy "sharing_settings_owner_all" on public.sharing_settings
+  for all using (user_id = auth.uid())
+  with check (user_id = auth.uid());
 
 drop policy if exists "organization_members_self_all" on public.organization_members;
 create policy "organization_members_self_all" on public.organization_members
