@@ -1,3 +1,5 @@
+import { validatePublicConfig } from './validateConfig';
+
 type PublicEnv = {
   supabaseUrl: string;
   supabaseAnonKey: string;
@@ -13,7 +15,7 @@ function readRequiredEnv(name: string, value: string | undefined): string {
   return value;
 }
 
-export const publicEnv: PublicEnv = {
+export const publicEnv: PublicEnv = validatePublicConfig({
   supabaseUrl: readRequiredEnv(
     'EXPO_PUBLIC_SUPABASE_URL',
     process.env.EXPO_PUBLIC_SUPABASE_URL,
@@ -22,4 +24,4 @@ export const publicEnv: PublicEnv = {
     'EXPO_PUBLIC_SUPABASE_ANON_KEY',
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
   ),
-};
+});
