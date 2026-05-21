@@ -4,36 +4,18 @@ import type {
   ProfileType,
   SavedContact,
 } from '../../types';
+import type { Database } from '../../types/database';
 import type {
   CreateContactInput,
   UpdateContactInput,
 } from '../contactService';
 
-export type ContactRow = {
-  id: string;
-  user_id: string;
-  source_profile_id: string | null;
-  name: string;
-  headline: string | null;
-  bio: string | null;
-  email: string | null;
-  phone: string | null;
-  location: string | null;
-  notes: string | null;
-  tags: string[];
-  created_at: string;
-  updated_at: string;
-};
+export type ContactRow = Database['public']['Tables']['contacts']['Row'];
 
-export type ContactLinkRow = {
-  id: string;
-  contact_id: string;
-  label: string;
-  url: string;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
-};
+export type ContactLinkRow = Database['public']['Tables']['contact_links']['Row'];
+
+type ContactInsert = Database['public']['Tables']['contacts']['Insert'];
+type ContactUpdate = Database['public']['Tables']['contacts']['Update'];
 
 export type ContactWithLinksRow = ContactRow & {
   contact_links?: ContactLinkRow[] | null;
@@ -52,7 +34,7 @@ export function mapContactRowToContact(row: ContactWithLinksRow): SavedContact {
   };
 }
 
-export function mapContactToInsert(contact: CreateContactInput) {
+export function mapContactToInsert(contact: CreateContactInput): ContactInsert {
   return {
     user_id: contact.userId,
     source_profile_id: contact.profileId ?? null,
@@ -67,7 +49,7 @@ export function mapContactToInsert(contact: CreateContactInput) {
   };
 }
 
-export function mapContactUpdatesToRow(updates: UpdateContactInput) {
+export function mapContactUpdatesToRow(updates: UpdateContactInput): ContactUpdate {
   return {
     ...(updates.profileId !== undefined ? { source_profile_id: updates.profileId } : {}),
     ...(updates.name !== undefined ? { name: updates.name } : {}),

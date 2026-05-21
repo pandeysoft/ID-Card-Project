@@ -36,6 +36,68 @@ export type Database = {
           updated_at?: string;
         };
       };
+      contacts: {
+        Row: {
+          id: string;
+          user_id: string;
+          source_profile_id: string | null;
+          name: string;
+          headline: string | null;
+          bio: string | null;
+          email: string | null;
+          phone: string | null;
+          location: string | null;
+          notes: string | null;
+          tags: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          source_profile_id?: string | null;
+          name: string;
+          headline?: string | null;
+          bio?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          location?: string | null;
+          notes?: string | null;
+          tags?: readonly string[];
+        };
+        Update: {
+          source_profile_id?: string | null;
+          name?: string;
+          headline?: string | null;
+          bio?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          location?: string | null;
+          notes?: string | null;
+          tags?: readonly string[];
+        };
+      };
+      contact_links: {
+        Row: {
+          id: string;
+          contact_id: string;
+          label: string;
+          url: string;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          contact_id: string;
+          label: string;
+          url: string;
+          display_order?: number;
+        };
+        Update: {
+          label?: string;
+          url?: string;
+          display_order?: number;
+        };
+      };
       profiles: {
         Row: {
           id: string;
