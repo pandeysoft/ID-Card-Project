@@ -77,6 +77,7 @@ export function mapProfileLinkRowToProfileLink(row: ProfileLinkRow): ProfileLink
     label: row.label,
     url: row.url,
     order: row.display_order,
+    isVisible: row.is_visible,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

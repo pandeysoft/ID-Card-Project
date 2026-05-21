@@ -5,6 +5,7 @@ import {
   mapProfileUpdatesToRow,
   type ProfileWithLinksRow,
 } from './mappers/profileMapper';
+import type { PublicProfilePublishedData } from '../types/database';
 import type { Profile, ProfileType } from '../types';
 
 export type CreateProfileInput = {
@@ -123,17 +124,20 @@ export async function publishPublicProfile(
         headline: profile.headline,
         bio: profile.bio,
         avatar_url: profile.avatarUrl ?? null,
-        published_data: {
-          type: profile.type,
-          email: profile.email,
-          phone: profile.phone,
-          location: profile.location,
-          links: profile.links,
-        },
+        published_data: buildPublicProfilePublishedData(profile),
         is_public: profile.isPublic,
       },
       { onConflict: 'profile_id' },
     );
 
   assertNoError(error, 'Unable to publish public profile.');
+}
+
+export function buildPublicProfilePublishedData(profile: Profile): PublicProfilePublishedData {
+  return {
+    type: profile.type,
+    company: profile.company,
+    avatarUrl: profile.avatarUrl,
+    links: profile.links.filter((link) => link.isVisible !== false),
+  };
 }

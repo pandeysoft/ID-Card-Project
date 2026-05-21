@@ -2,6 +2,8 @@ import type { BusinessProfile, ProfileLink, ProfileType, ProfileVisibility } fro
 
 export type PublicProfilePublishedData = {
   type?: ProfileType;
+  company?: string;
+  avatarUrl?: string;
   links?: readonly ProfileLink[];
   business?: BusinessProfile;
 };
@@ -314,6 +316,7 @@ export type Database = {
           label: string;
           url: string;
           display_order: number;
+          is_visible: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -322,11 +325,13 @@ export type Database = {
           label: string;
           url: string;
           display_order?: number;
+          is_visible?: boolean;
         };
         Update: {
           label?: string;
           url?: string;
           display_order?: number;
+          is_visible?: boolean;
         };
       };
       public_profiles: {

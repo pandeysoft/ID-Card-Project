@@ -115,6 +115,7 @@ export interface ProfileLink {
   label: string;
   url: string;
   order: number;
+  isVisible?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
