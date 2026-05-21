@@ -1,17 +1,20 @@
 import { createContext, useContext, useMemo, useState } from 'react';
+import type { RouteProp } from '@react-navigation/native';
 import { ContactDetailScreen } from '../screens/ContactDetailScreen';
-import { EditProfileScreen, type EditProfileForm } from '../screens/EditProfileScreen';
+import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { LeadCaptureScreen } from '../screens/LeadCaptureScreen';
 import { LeadDetailScreen } from '../screens/LeadDetailScreen';
 import { LeadsScreen } from '../screens/LeadsScreen';
 import { NetworkingScreen } from '../screens/NetworkingScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { PublicProfileScreen } from '../screens/PublicProfileScreen';
-import type { Lead, Profile, SavedContact } from '../types';
-import { RootTabs } from './RootTabs';
+import { ProfileProvider } from '../contexts';
+import type { Lead, SavedContact } from '../types';
+import type { RootStackParamList } from '../types/navigation';
+import { RootStack } from './RootStack';
 
 type EditProfileNavigationValue = {
-  openEditProfile: (profile: Profile, onSave: (form: EditProfileForm) => Promise<void> | void) => void;
+  openEditProfile: (profileId: string) => void;
   openContactDetail: (contact: SavedContact) => void;
   openLeadDetail: (lead: Lead) => void;
   openLeadCapturePreview: () => void;
@@ -21,36 +24,81 @@ type EditProfileNavigationValue = {
   openPublicProfilePreview: (publicSlug?: string) => void;
 };
 
-type EditingProfileState = {
-  profile: Profile;
-  onSave: (form: EditProfileForm) => Promise<void> | void;
-};
-
 const EditProfileNavigationContext = createContext<EditProfileNavigationValue | undefined>(undefined);
 
 export function RootNavigator() {
-  const [editingProfile, setEditingProfile] = useState<EditingProfileState | null>(null);
-  const [selectedContact, setSelectedContact] = useState<SavedContact | null>(null);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [editingProfileParams, setEditingProfileParams] =
+    useState<RootStackParamList['EditProfile'] | null>(null);
+  const [selectedContactParams, setSelectedContactParams] =
+    useState<RootStackParamList['ContactDetail'] | null>(null);
+  const [selectedLeadParams, setSelectedLeadParams] = useState<RootStackParamList['LeadDetail'] | null>(null);
   const [showingLeadCapture, setShowingLeadCapture] = useState(false);
   const [showingLeads, setShowingLeads] = useState(false);
   const [showingNetworking, setShowingNetworking] = useState(false);
   const [showingOnboarding, setShowingOnboarding] = useState(false);
-  const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(null);
+  const [publicProfileParams, setPublicProfileParams] =
+    useState<RootStackParamList['PublicProfile']>();
   const [showingPublicProfile, setShowingPublicProfile] = useState(false);
+  const publicProfileRoute = useMemo<RouteProp<RootStackParamList, 'PublicProfile'>>(
+    () => ({
+      key: 'PublicProfile',
+      name: 'PublicProfile',
+      params: publicProfileParams,
+    }),
+    [publicProfileParams],
+  );
+  const leadsPreviewRoute = useMemo<RouteProp<RootStackParamList, 'LeadsPreview'>>(
+    () => ({
+      key: 'LeadsPreview',
+      name: 'LeadsPreview',
+      params: undefined,
+    }),
+    [],
+  );
+  const leadDetailRoute = useMemo<RouteProp<RootStackParamList, 'LeadDetail'> | null>(
+    () =>
+      selectedLeadParams
+        ? {
+            key: `LeadDetail-${selectedLeadParams.leadId}`,
+            name: 'LeadDetail',
+            params: selectedLeadParams,
+          }
+        : null,
+    [selectedLeadParams],
+  );
+  const contactDetailRoute = useMemo<RouteProp<RootStackParamList, 'ContactDetail'> | null>(
+    () =>
+      selectedContactParams
+        ? {
+            key: `ContactDetail-${selectedContactParams.contactId}`,
+            name: 'ContactDetail',
+            params: selectedContactParams,
+          }
+        : null,
+    [selectedContactParams],
+  );
+  const editProfileRoute = useMemo<RouteProp<RootStackParamList, 'EditProfile'> | null>(
+    () =>
+      editingProfileParams
+        ? {
+            key: `EditProfile-${editingProfileParams.profileId}`,
+            name: 'EditProfile',
+            params: editingProfileParams,
+          }
+        : null,
+    [editingProfileParams],
+  );
   const value = useMemo(
     () => ({
-      openEditProfile: (profile: Profile, onSave: (form: EditProfileForm) => Promise<void> | void) => {
-        setEditingProfile({ profile, onSave });
-      },
-      openContactDetail: (contact: SavedContact) => setSelectedContact(contact),
-      openLeadDetail: (lead: Lead) => setSelectedLead(lead),
+      openEditProfile: (profileId: string) => setEditingProfileParams({ profileId }),
+      openContactDetail: (contact: SavedContact) => setSelectedContactParams({ contactId: contact.id }),
+      openLeadDetail: (lead: Lead) => setSelectedLeadParams({ leadId: lead.id }),
       openLeadCapturePreview: () => setShowingLeadCapture(true),
       openLeadsPreview: () => setShowingLeads(true),
       openNetworkingPreview: () => setShowingNetworking(true),
       openOnboardingPreview: () => setShowingOnboarding(true),
       openPublicProfilePreview: (publicSlug?: string) => {
-        setPublicProfileSlug(publicSlug ?? null);
+        setPublicProfileParams(publicSlug ? { publicSlug } : { devPreview: true });
         setShowingPublicProfile(true);
       },
     }),
@@ -58,24 +106,21 @@ export function RootNavigator() {
   );
 
   return (
-    <EditProfileNavigationContext.Provider value={value}>
-      {editingProfile ? (
+    <ProfileProvider>
+      <EditProfileNavigationContext.Provider value={value}>
+      {editProfileRoute ? (
         <EditProfileScreen
-          profile={editingProfile.profile}
-          onCancel={() => setEditingProfile(null)}
-          onSave={async (form) => {
-            await editingProfile.onSave(form);
-            setEditingProfile(null);
-          }}
+          onCancel={() => setEditingProfileParams(null)}
+          route={editProfileRoute}
         />
-      ) : selectedContact ? (
-        <ContactDetailScreen contact={selectedContact} onBack={() => setSelectedContact(null)} />
-      ) : selectedLead ? (
-        <LeadDetailScreen lead={selectedLead} onBack={() => setSelectedLead(null)} />
+      ) : contactDetailRoute ? (
+        <ContactDetailScreen onBack={() => setSelectedContactParams(null)} route={contactDetailRoute} />
+      ) : leadDetailRoute ? (
+        <LeadDetailScreen onBack={() => setSelectedLeadParams(null)} route={leadDetailRoute} />
       ) : showingLeadCapture ? (
         <LeadCaptureScreen onClose={() => setShowingLeadCapture(false)} />
       ) : showingLeads ? (
-        <LeadsScreen onClose={() => setShowingLeads(false)} />
+        <LeadsScreen onClose={() => setShowingLeads(false)} route={leadsPreviewRoute} />
       ) : showingNetworking ? (
         <NetworkingScreen onClose={() => setShowingNetworking(false)} />
       ) : showingOnboarding ? (
@@ -83,12 +128,13 @@ export function RootNavigator() {
       ) : showingPublicProfile ? (
         <PublicProfileScreen
           onClose={() => setShowingPublicProfile(false)}
-          publicSlug={publicProfileSlug ?? undefined}
+          route={publicProfileRoute}
         />
       ) : (
-        <RootTabs />
+        <RootStack />
       )}
-    </EditProfileNavigationContext.Provider>
+      </EditProfileNavigationContext.Provider>
+    </ProfileProvider>
   );
 }
 

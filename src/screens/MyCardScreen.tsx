@@ -1,16 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { User } from '@supabase/supabase-js';
 import { ProfileQrCode } from '../components/ProfileQrCode';
-import { useAuth } from '../contexts';
-import { mockBusinessProfile, mockProfiles } from '../lib/mockData';
+import { useProfiles } from '../contexts';
+import { mockBusinessProfile } from '../lib/mockData';
 import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
-import type { EditProfileForm } from './EditProfileScreen';
-import { initializeUserProfiles } from '../services/bootstrapService';
-import { getAvatarPublicUrl, uploadProfileAvatar } from '../services/avatarService';
-import { getProfileLinks, replaceProfileLinks } from '../services/profileLinkService';
-import { getProfiles, updateProfile } from '../services/profileService';
 import { generateVCardFromProfile, shareVCardFile } from '../services/vcardService';
 import { spacing } from '../theme';
 import type { Profile, ProfileType } from '../types';
@@ -37,139 +31,21 @@ type RowIcon =
   | 'calendar';
 
 export function MyCardScreen() {
-  const { isDevelopmentAuthBypass, user, loading: authLoading } = useAuth();
   const { openEditProfile } = useEditProfileNavigation();
-  const [profiles, setProfiles] = useState<Profile[]>([...mockProfiles]);
-  const [profilesLoading, setProfilesLoading] = useState(false);
-  const [activeProfileId, setActiveProfileId] = useState(mockProfiles[0].id);
+  const {
+    activeProfile,
+    activeProfileId,
+    loading: profilesLoading,
+    profiles,
+    selectProfile: selectActiveProfile,
+  } = useProfiles();
   const [cardSide, setCardSide] = useState<CardSide>('profile');
   const [selectorOpen, setSelectorOpen] = useState(false);
-
-  const activeProfile = useMemo(
-    () => profiles.find((profile) => profile.id === activeProfileId) ?? profiles[0] ?? mockProfiles[0],
-    [activeProfileId, profiles],
-  );
   const profileUrl = getProfileUrl(activeProfile);
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadProfiles() {
-      if (authLoading) {
-        return;
-      }
-
-      if (!user || isDevelopmentAuthBypass) {
-        setProfiles([...mockProfiles]);
-        setProfilesLoading(false);
-        return;
-      }
-
-      setProfilesLoading(true);
-
-      try {
-        const userProfiles = await loadAuthenticatedProfiles(user);
-
-        if (mounted) {
-          setProfiles(userProfiles.length > 0 ? userProfiles : [...mockProfiles]);
-        }
-      } catch {
-        console.warn('CardIQ profiles failed to load.');
-
-        if (mounted) {
-          setProfiles([...mockProfiles]);
-        }
-      } finally {
-        if (mounted) {
-          setProfilesLoading(false);
-        }
-      }
-    }
-
-    void loadProfiles();
-
-    return () => {
-      mounted = false;
-    };
-  }, [authLoading, isDevelopmentAuthBypass, user]);
-
-  useEffect(() => {
-    if (!profiles.some((profile) => profile.id === activeProfileId)) {
-      setActiveProfileId(profiles[0]?.id ?? mockProfiles[0].id);
-      setSelectorOpen(false);
-    }
-  }, [activeProfileId, profiles]);
-
   function selectProfile(profileId: string) {
-    setActiveProfileId(profileId);
+    selectActiveProfile(profileId);
     setSelectorOpen(false);
-  }
-
-  async function saveProfileEdits(profileId: string, form: EditProfileForm) {
-    setProfiles((currentProfiles) =>
-      currentProfiles.map((profile) =>
-        profile.id === profileId
-          ? {
-              ...profile,
-              name: form.displayName,
-              headline: form.title,
-              company: form.company,
-              bio: form.bio,
-              avatarUrl: form.avatarUri ?? profile.avatarUrl,
-              links: form.links.map((link, index) => ({
-                id: link.id,
-                profileId,
-                label: link.label,
-                url: link.value,
-                order: index,
-                createdAt: profile.createdAt,
-                updatedAt: new Date().toISOString(),
-              })),
-            }
-          : profile,
-      ),
-    );
-
-    if (!user || isDevelopmentAuthBypass) {
-      return;
-    }
-
-    let avatarUrl = form.avatarUri;
-
-    if (form.avatarUri && form.avatarUri !== activeProfile.avatarUrl) {
-      try {
-        avatarUrl = getAvatarPublicUrl(await uploadProfileAvatar(user.id, profileId, form.avatarUri));
-        setProfiles((currentProfiles) =>
-          currentProfiles.map((profile) =>
-            profile.id === profileId ? { ...profile, avatarUrl } : profile,
-          ),
-        );
-      } catch (error) {
-        throw new Error(
-          error instanceof Error ? `Avatar upload failed: ${error.message}` : 'Avatar upload failed.',
-        );
-      }
-    }
-
-    await updateProfile(profileId, {
-      name: form.displayName,
-      headline: form.title,
-      company: form.company,
-      bio: form.bio,
-      avatarUrl,
-    });
-
-    await replaceProfileLinks(
-      profileId,
-      user.id,
-      form.links
-        .filter((link) => link.label.trim() && link.value.trim())
-        .map((link, index) => ({
-          label: link.label.trim(),
-          url: link.value.trim(),
-          order: index,
-        })),
-    );
   }
 
   return (
@@ -181,11 +57,11 @@ export function MyCardScreen() {
               profile={activeProfile}
               profiles={profiles}
               activeProfileId={activeProfileId}
-              loading={profilesLoading || authLoading}
+              loading={profilesLoading}
               selectorOpen={selectorOpen}
               onToggleSelector={() => setSelectorOpen((open) => !open)}
               onSelectProfile={selectProfile}
-              onEdit={() => openEditProfile(activeProfile, (form) => saveProfileEdits(activeProfile.id, form))}
+              onEdit={() => openEditProfile(activeProfile.id)}
               onFlip={() => setCardSide('qr')}
             />
           ) : (
@@ -561,25 +437,6 @@ function getProfileTitle(profile: Profile) {
 
 function getProfileUrl(profile: Profile) {
   return `https://cardiq.app/u/${profile.publicSlug}`;
-}
-
-async function loadAuthenticatedProfiles(user: User): Promise<Profile[]> {
-  const profiles = await getProfiles(user.id);
-
-  if (profiles.length > 0) {
-    return loadProfilesWithLinks(profiles);
-  }
-
-  return loadProfilesWithLinks(await initializeUserProfiles(user));
-}
-
-async function loadProfilesWithLinks(profiles: Profile[]): Promise<Profile[]> {
-  return Promise.all(
-    profiles.map(async (profile) => ({
-      ...profile,
-      links: await getProfileLinks(profile.id),
-    })),
-  );
 }
 
 const styles = StyleSheet.create({

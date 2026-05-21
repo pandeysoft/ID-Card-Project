@@ -1,26 +1,70 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { RouteProp } from '@react-navigation/native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
-import { updateLeadStatus } from '../services/leadService';
+import { mockLeads } from '../lib/mockData';
+import { getLeadById, updateLeadStatus } from '../services/leadService';
 import { colors, spacing, typography } from '../theme';
 import type { Lead, LeadStatus } from '../types';
+import type { RootStackParamList } from '../types/navigation';
 
 type LeadDetailScreenProps = {
-  lead: Lead;
   onBack: () => void;
+  route: RouteProp<RootStackParamList, 'LeadDetail'>;
 };
 
 const statuses: LeadStatus[] = ['new', 'contacted', 'qualified', 'converted', 'lost'];
 
-export function LeadDetailScreen({ lead, onBack }: LeadDetailScreenProps) {
+export function LeadDetailScreen({ onBack, route }: LeadDetailScreenProps) {
   const { isDevelopmentAuthBypass, user } = useAuth();
-  const [localLead, setLocalLead] = useState(lead);
+  const { leadId } = route.params;
+  const [localLead, setLocalLead] = useState<Lead | null>(null);
+  const [loadingLead, setLoadingLead] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadLead() {
+      setLoadingLead(true);
+      setErrorMessage(null);
+
+      try {
+        const lead =
+          user && !isDevelopmentAuthBypass
+            ? await getLeadById(leadId)
+            : mockLeads.find((item) => item.id === leadId) ?? null;
+
+        if (mounted) {
+          setLocalLead(lead);
+          setErrorMessage(lead ? null : 'Lead not found.');
+        }
+      } catch (error) {
+        if (mounted) {
+          setErrorMessage(error instanceof Error ? error.message : 'Unable to load lead.');
+        }
+      } finally {
+        if (mounted) {
+          setLoadingLead(false);
+        }
+      }
+    }
+
+    void loadLead();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isDevelopmentAuthBypass, leadId, user]);
+
   async function handleStatusChange(status: LeadStatus) {
+    if (!localLead) {
+      return;
+    }
+
     const previousLead = localLead;
 
     setLocalLead({ ...localLead, status, updatedAt: new Date().toISOString() });
@@ -43,7 +87,7 @@ export function LeadDetailScreen({ lead, onBack }: LeadDetailScreenProps) {
     }
   }
 
-  const companyOrTitle = localLead.snapshot.business?.companyName ?? localLead.snapshot.headline;
+  const companyOrTitle = localLead?.snapshot.business?.companyName ?? localLead?.snapshot.headline;
 
   return (
     <Screen title="Lead" subtitle="Lead details and current follow-up status.">
@@ -52,6 +96,10 @@ export function LeadDetailScreen({ lead, onBack }: LeadDetailScreenProps) {
           <Text style={styles.backButtonText}>Back to leads</Text>
         </Pressable>
 
+        {loadingLead ? <Text style={styles.loading}>Loading lead...</Text> : null}
+        {!loadingLead && !localLead ? <Text style={styles.error}>{errorMessage ?? 'Lead not found.'}</Text> : null}
+        {localLead ? (
+          <>
         <View style={styles.header}>
           <Text style={styles.name}>{localLead.snapshot.name}</Text>
           <Text style={styles.headline}>{companyOrTitle || 'No title saved'}</Text>
@@ -106,6 +154,8 @@ export function LeadDetailScreen({ lead, onBack }: LeadDetailScreenProps) {
             <Text style={styles.empty}>No contact links saved.</Text>
           )}
         </View>
+          </>
+        ) : null}
       </ScrollView>
     </Screen>
   );

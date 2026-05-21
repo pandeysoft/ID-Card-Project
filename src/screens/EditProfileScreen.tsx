@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
+import type { RouteProp } from '@react-navigation/native';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Screen } from '../components/Screen';
+import { useProfiles } from '../contexts';
 import { colors, spacing, typography } from '../theme';
-import type { Profile } from '../types';
+import type { RootStackParamList } from '../types/navigation';
 
 const linkTypes = ['phone', 'email', 'website', 'linkedin', 'instagram', 'facebook', 'x', 'youtube', 'tiktok', 'whatsapp', 'custom'] as const;
 
@@ -26,12 +28,14 @@ export type EditProfileForm = {
 };
 
 type EditProfileScreenProps = {
-  profile?: Profile;
   onCancel?: () => void;
-  onSave?: (form: EditProfileForm) => Promise<void> | void;
+  route: RouteProp<RootStackParamList, 'EditProfile'>;
 };
 
-export function EditProfileScreen({ profile, onCancel, onSave }: EditProfileScreenProps) {
+export function EditProfileScreen({ onCancel, route }: EditProfileScreenProps) {
+  const { profiles, saveProfileEdits } = useProfiles();
+  const { profileId } = route.params;
+  const profile = profiles.find((item) => item.id === profileId);
   const initialForm = useMemo<EditProfileForm>(
     () => ({
       displayName: profile?.name ?? '',
@@ -52,6 +56,10 @@ export function EditProfileScreen({ profile, onCancel, onSave }: EditProfileScre
   const [saving, setSaving] = useState(false);
   const [pickingAvatar, setPickingAvatar] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setForm(initialForm);
+  }, [initialForm]);
 
   function updateField(field: keyof EditProfileForm, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -113,7 +121,12 @@ export function EditProfileScreen({ profile, onCancel, onSave }: EditProfileScre
     setErrorMessage(null);
 
     try {
-      await onSave?.(form);
+      if (!profile) {
+        throw new Error('Profile not found.');
+      }
+
+      await saveProfileEdits(profileId, form);
+      onCancel?.();
     } catch (error) {
       setErrorMessage(
         error instanceof Error

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { RouteProp } from '@react-navigation/native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts';
@@ -8,17 +9,19 @@ import { getPublicProfileBySlug } from '../services/publicProfileService';
 import { generateVCardFromProfile, shareVCardFile } from '../services/vcardService';
 import { colors, spacing, typography } from '../theme';
 import type { Profile, ProfileLink, SavedContact } from '../types';
+import type { RootStackParamList } from '../types/navigation';
 
 type PublicProfileScreenProps = {
   onClose?: () => void;
-  profile?: Profile;
-  publicSlug?: string;
+  route: RouteProp<RootStackParamList, 'PublicProfile'>;
 };
 
 const defaultProfile = mockProfiles[1];
 
-export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProfileScreenProps) {
+export function PublicProfileScreen({ onClose, route }: PublicProfileScreenProps) {
   const { isDevelopmentAuthBypass, user } = useAuth();
+  const publicSlug = route.params?.publicSlug;
+  const devPreview = route.params?.devPreview === true;
   const [loadedProfile, setLoadedProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadMessage, setLoadMessage] = useState<string | null>(null);
@@ -32,8 +35,8 @@ export function PublicProfileScreen({ onClose, profile, publicSlug }: PublicProf
       return loadedProfile;
     }
 
-    return profile ?? defaultProfile;
-  }, [loadedProfile, profile, publicSlug]);
+    return devPreview ? defaultProfile : null;
+  }, [devPreview, loadedProfile, publicSlug]);
 
   useEffect(() => {
     let mounted = true;

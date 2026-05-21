@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { RouteProp } from '@react-navigation/native';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
@@ -7,10 +8,12 @@ import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
 import { getLeads } from '../services/leadService';
 import { colors, spacing, typography } from '../theme';
 import type { Lead, LeadStatus } from '../types';
+import type { RootStackParamList } from '../types/navigation';
 
 type LeadFilter = 'all' | LeadStatus;
 type LeadsScreenProps = {
   onClose?: () => void;
+  route: RouteProp<RootStackParamList, 'LeadsPreview'>;
 };
 
 const filters: { label: string; value: LeadFilter }[] = [
@@ -23,7 +26,8 @@ const filters: { label: string; value: LeadFilter }[] = [
 ];
 const leadsPageSize = 25;
 
-export function LeadsScreen({ onClose }: LeadsScreenProps) {
+export function LeadsScreen({ onClose, route }: LeadsScreenProps) {
+  void route;
   const { isDevelopmentAuthBypass, loading: authLoading, user } = useAuth();
   const { openLeadDetail } = useEditProfileNavigation();
   const [savedLeads, setSavedLeads] = useState<Lead[]>([...mockLeads]);

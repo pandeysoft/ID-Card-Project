@@ -1,33 +1,79 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { RouteProp } from '@react-navigation/native';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
-import { mockLeads } from '../lib/mockData';
-import { updateContact } from '../services/contactService';
+import { mockLeads, mockSavedContacts } from '../lib/mockData';
+import { getContactById, updateContact } from '../services/contactService';
 import { generateVCardFromContact, shareVCardFile } from '../services/vcardService';
 import { colors, spacing, typography } from '../theme';
 import type { LeadStatus, SavedContact } from '../types';
+import type { RootStackParamList } from '../types/navigation';
 
 type ContactDetailScreenProps = {
-  contact: SavedContact;
   onBack: () => void;
+  route: RouteProp<RootStackParamList, 'ContactDetail'>;
 };
 
 const leadStatuses: LeadStatus[] = ['new', 'contacted', 'qualified', 'converted', 'lost'];
 
-export function ContactDetailScreen({ contact, onBack }: ContactDetailScreenProps) {
+export function ContactDetailScreen({ onBack, route }: ContactDetailScreenProps) {
   const { isDevelopmentAuthBypass, user } = useAuth();
-  const lead = mockLeads.find((item) => item.savedContactId === contact.id);
-  const [localContact, setLocalContact] = useState(contact);
-  const [notes, setNotes] = useState(contact.notes ?? lead?.notes ?? '');
-  const [leadStatus, setLeadStatus] = useState<LeadStatus | null>(lead?.status ?? null);
+  const { contactId } = route.params;
+  const [localContact, setLocalContact] = useState<SavedContact | null>(null);
+  const [notes, setNotes] = useState('');
+  const [leadStatus, setLeadStatus] = useState<LeadStatus | null>(null);
+  const [loadingContact, setLoadingContact] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const lead = localContact ? mockLeads.find((item) => item.savedContactId === localContact.id) : undefined;
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadContact() {
+      setLoadingContact(true);
+      setSaveError(null);
+
+      try {
+        const contact =
+          user && !isDevelopmentAuthBypass
+            ? await getContactById(contactId)
+            : mockSavedContacts.find((item) => item.id === contactId) ?? null;
+        const contactLead = contact ? mockLeads.find((item) => item.savedContactId === contact.id) : undefined;
+
+        if (mounted) {
+          setLocalContact(contact);
+          setNotes(contact?.notes ?? contactLead?.notes ?? '');
+          setLeadStatus(contactLead?.status ?? null);
+          setSaveError(contact ? null : 'Contact not found.');
+        }
+      } catch (error) {
+        if (mounted) {
+          setSaveError(error instanceof Error ? error.message : 'Unable to load contact.');
+        }
+      } finally {
+        if (mounted) {
+          setLoadingContact(false);
+        }
+      }
+    }
+
+    void loadContact();
+
+    return () => {
+      mounted = false;
+    };
+  }, [contactId, isDevelopmentAuthBypass, user]);
 
   async function handleSave() {
+    if (!localContact) {
+      return;
+    }
+
     const nextNotes = notes.trim();
     const nextContact = { ...localContact, notes: nextNotes || undefined, updatedAt: new Date().toISOString() };
 
@@ -52,6 +98,10 @@ export function ContactDetailScreen({ contact, onBack }: ContactDetailScreenProp
   }
 
   async function handleExportVCard() {
+    if (!localContact) {
+      return;
+    }
+
     setExporting(true);
     setExportError(null);
 
@@ -64,8 +114,8 @@ export function ContactDetailScreen({ contact, onBack }: ContactDetailScreenProp
     }
   }
 
-  const company = localContact.snapshot.business?.companyName;
-  const title = localContact.snapshot.business?.jobTitle ?? localContact.snapshot.headline;
+  const company = localContact?.snapshot.business?.companyName;
+  const title = localContact?.snapshot.business?.jobTitle ?? localContact?.snapshot.headline;
   const source = lead?.source ?? 'Manual save';
 
   return (
@@ -75,9 +125,13 @@ export function ContactDetailScreen({ contact, onBack }: ContactDetailScreenProp
           <Text style={styles.backButtonText}>Back to contacts</Text>
         </Pressable>
 
+        {loadingContact ? <Text style={styles.bodyText}>Loading contact...</Text> : null}
+        {!loadingContact && !localContact ? <Text style={styles.error}>{saveError ?? 'Contact not found.'}</Text> : null}
+        {localContact ? (
+          <>
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(contact.snapshot.name)}</Text>
+            <Text style={styles.avatarText}>{getInitials(localContact.snapshot.name)}</Text>
           </View>
           <View style={styles.headerBody}>
             <Text style={styles.name}>{localContact.snapshot.name}</Text>
@@ -162,6 +216,8 @@ export function ContactDetailScreen({ contact, onBack }: ContactDetailScreenProp
           <Text style={styles.exportButtonText}>{exporting ? 'Preparing vCard...' : 'Export vCard'}</Text>
         </Pressable>
         {exportError ? <Text style={styles.error}>{exportError}</Text> : null}
+          </>
+        ) : null}
       </ScrollView>
     </Screen>
   );
