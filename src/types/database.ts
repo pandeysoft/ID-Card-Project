@@ -1,4 +1,4 @@
-import type { BusinessProfile, ProfileLink, ProfileType } from './cardiq';
+import type { BusinessProfile, ProfileLink, ProfileType, ProfileVisibility } from './cardiq';
 
 export type PublicProfilePublishedData = {
   type?: ProfileType;
@@ -41,6 +41,69 @@ export type Database = {
           display_name?: string | null;
           onboarding_completed?: boolean;
           onboarding_completed_at?: string | null;
+          updated_at?: string;
+        };
+      };
+      account_settings: {
+        Row: {
+          user_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          updated_at?: string;
+        };
+      };
+      privacy_settings: {
+        Row: {
+          user_id: string;
+          profile_visibility: ProfileVisibility;
+          searchable_by_email: boolean;
+          searchable_by_phone: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          profile_visibility?: ProfileVisibility;
+          searchable_by_email?: boolean;
+          searchable_by_phone?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          profile_visibility?: ProfileVisibility;
+          searchable_by_email?: boolean;
+          searchable_by_phone?: boolean;
+          updated_at?: string;
+        };
+      };
+      sharing_settings: {
+        Row: {
+          user_id: string;
+          contact_sync_enabled: boolean;
+          lead_sharing_requires_consent: boolean;
+          allow_vcard_export: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          contact_sync_enabled?: boolean;
+          lead_sharing_requires_consent?: boolean;
+          allow_vcard_export?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          contact_sync_enabled?: boolean;
+          lead_sharing_requires_consent?: boolean;
+          allow_vcard_export?: boolean;
           updated_at?: string;
         };
       };

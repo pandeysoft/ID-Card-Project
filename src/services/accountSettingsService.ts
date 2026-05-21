@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { AccountSettings, PrivacySettings, SharingSettings } from '../types';
+import type { Database } from '../types/database';
 
 export type UpdatePrivacySettingsInput = Partial<
   Omit<PrivacySettings, 'userId' | 'createdAt' | 'updatedAt'>
@@ -14,29 +15,11 @@ export type UpdateAccountSettingsInput = {
   sharing?: UpdateSharingSettingsInput;
 };
 
-type PrivacySettingsRow = {
-  user_id: string;
-  profile_visibility: PrivacySettings['profileVisibility'];
-  searchable_by_email: boolean;
-  searchable_by_phone: boolean;
-  created_at?: string;
-  updated_at?: string;
-};
-
-type SharingSettingsRow = {
-  user_id: string;
-  contact_sync_enabled: boolean;
-  lead_sharing_requires_consent: boolean;
-  allow_vcard_export: boolean;
-  created_at?: string;
-  updated_at?: string;
-};
-
-type AccountSettingsRow = {
-  user_id: string;
-  created_at?: string;
-  updated_at?: string;
-};
+type AccountSettingsRow = Database['public']['Tables']['account_settings']['Row'];
+type PrivacySettingsRow = Database['public']['Tables']['privacy_settings']['Row'];
+type PrivacySettingsInsert = Database['public']['Tables']['privacy_settings']['Insert'];
+type SharingSettingsRow = Database['public']['Tables']['sharing_settings']['Row'];
+type SharingSettingsInsert = Database['public']['Tables']['sharing_settings']['Insert'];
 
 const defaultPrivacySettings: Omit<PrivacySettings, 'userId'> = {
   profileVisibility: 'private',
@@ -191,7 +174,7 @@ function mapSharingSettingsRow(row: SharingSettingsRow): SharingSettings {
   };
 }
 
-function mapPrivacySettingsToRow(settings: PrivacySettings): PrivacySettingsRow {
+function mapPrivacySettingsToRow(settings: PrivacySettings): PrivacySettingsInsert {
   return {
     user_id: settings.userId,
     profile_visibility: settings.profileVisibility,
@@ -200,7 +183,7 @@ function mapPrivacySettingsToRow(settings: PrivacySettings): PrivacySettingsRow 
   };
 }
 
-function mapSharingSettingsToRow(settings: SharingSettings): SharingSettingsRow {
+function mapSharingSettingsToRow(settings: SharingSettings): SharingSettingsInsert {
   return {
     user_id: settings.userId,
     contact_sync_enabled: settings.contactSyncEnabled,
