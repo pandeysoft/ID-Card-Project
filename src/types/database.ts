@@ -98,6 +98,37 @@ export type Database = {
           display_order?: number;
         };
       };
+      leads: {
+        Row: {
+          id: string;
+          user_id: string;
+          contact_id: string | null;
+          profile_id: string | null;
+          lead_status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+          source: string | null;
+          notes: string | null;
+          next_follow_up_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          contact_id?: string | null;
+          profile_id?: string | null;
+          lead_status?: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+          source?: string | null;
+          notes?: string | null;
+          next_follow_up_at?: string | null;
+        };
+        Update: {
+          contact_id?: string | null;
+          profile_id?: string | null;
+          lead_status?: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+          source?: string | null;
+          notes?: string | null;
+          next_follow_up_at?: string | null;
+        };
+      };
       profiles: {
         Row: {
           id: string;

@@ -1,38 +1,20 @@
 import type {
   ContactSnapshot,
   Lead,
-  LeadStatus,
   ProfileType,
 } from '../../types';
+import type { Database } from '../../types/database';
 import type {
   CreateLeadInput,
   UpdateLeadInput,
 } from '../leadService';
 
-export type LeadRow = {
-  id: string;
-  user_id: string;
-  contact_id: string | null;
-  profile_id: string | null;
-  lead_status: LeadStatus;
-  source: string | null;
-  notes: string | null;
-  next_follow_up_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+export type LeadRow = Database['public']['Tables']['leads']['Row'];
 
-export type LeadContactRow = {
-  id: string;
-  source_profile_id: string | null;
-  name: string;
-  headline: string | null;
-  bio: string | null;
-  email: string | null;
-  phone: string | null;
-  location: string | null;
-  created_at: string;
-};
+export type LeadContactRow = Database['public']['Tables']['contacts']['Row'];
+
+type LeadInsert = Database['public']['Tables']['leads']['Insert'];
+type LeadUpdate = Database['public']['Tables']['leads']['Update'];
 
 export type LeadWithContactRow = LeadRow & {
   contacts?: LeadContactRow | null;
@@ -53,7 +35,7 @@ export function mapLeadRowToLead(row: LeadWithContactRow): Lead {
   };
 }
 
-export function mapLeadToInsert(lead: CreateLeadInput) {
+export function mapLeadToInsert(lead: CreateLeadInput): LeadInsert {
   return {
     user_id: lead.userId,
     contact_id: lead.contactId ?? null,
@@ -65,7 +47,7 @@ export function mapLeadToInsert(lead: CreateLeadInput) {
   };
 }
 
-export function mapLeadUpdatesToRow(updates: UpdateLeadInput) {
+export function mapLeadUpdatesToRow(updates: UpdateLeadInput): LeadUpdate {
   return {
     ...(updates.contactId !== undefined ? { contact_id: updates.contactId } : {}),
     ...(updates.profileId !== undefined ? { profile_id: updates.profileId } : {}),
