@@ -200,6 +200,67 @@ export type Database = {
           next_follow_up_at?: string | null;
         };
       };
+      networking_sessions: {
+        Row: {
+          id: string;
+          host_user_id: string;
+          status: 'active' | 'ended';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          host_user_id: string;
+          status?: 'active' | 'ended';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          status?: 'active' | 'ended';
+          updated_at?: string;
+        };
+      };
+      session_participants: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string;
+          joined_at: string;
+          left_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          user_id: string;
+          joined_at?: string;
+          left_at?: string | null;
+        };
+        Update: {
+          left_at?: string | null;
+        };
+      };
+      nearby_users: {
+        Row: {
+          id: string;
+          display_name: string;
+          headline: string | null;
+          distance_label: string | null;
+          last_seen_at: string;
+        };
+        Insert: {
+          id?: string;
+          display_name: string;
+          headline?: string | null;
+          distance_label?: string | null;
+          last_seen_at?: string;
+        };
+        Update: {
+          display_name?: string;
+          headline?: string | null;
+          distance_label?: string | null;
+          last_seen_at?: string;
+        };
+      };
       profiles: {
         Row: {
           id: string;

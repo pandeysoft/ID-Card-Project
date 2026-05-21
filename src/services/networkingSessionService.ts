@@ -1,22 +1,27 @@
 import type { NearbyUser, NetworkingSession, SessionParticipant } from '../types';
+import type { Database } from '../types/database';
 
-const sessions = new Map<string, NetworkingSession>();
-const participants = new Map<string, SessionParticipant>();
+type NetworkingSessionRow = Database['public']['Tables']['networking_sessions']['Row'];
+type SessionParticipantRow = Database['public']['Tables']['session_participants']['Row'];
+type NearbyUserRow = Database['public']['Tables']['nearby_users']['Row'];
 
-const mockNearbyUsers: readonly NearbyUser[] = [
+const sessions = new Map<NetworkingSessionRow['id'], NetworkingSession>();
+const participants = new Map<SessionParticipantRow['id'], SessionParticipant>();
+
+const mockNearbyUsers: readonly NearbyUserRow[] = [
   {
     id: 'nearby_maya_reed',
-    displayName: 'Maya Reed',
+    display_name: 'Maya Reed',
     headline: 'Partnerships Lead at Northstar Labs',
-    distanceLabel: 'Nearby',
-    lastSeenAt: new Date().toISOString(),
+    distance_label: 'Nearby',
+    last_seen_at: new Date().toISOString(),
   },
   {
     id: 'nearby_noah_kim',
-    displayName: 'Noah Kim',
+    display_name: 'Noah Kim',
     headline: 'Operations Director at Fieldstone',
-    distanceLabel: 'Same room',
-    lastSeenAt: new Date().toISOString(),
+    distance_label: 'Same room',
+    last_seen_at: new Date().toISOString(),
   },
 ];
 
@@ -92,7 +97,10 @@ export async function discoverNearbyUsers(): Promise<NearbyUser[]> {
   const now = new Date().toISOString();
 
   return mockNearbyUsers.map((user) => ({
-    ...user,
+    id: user.id,
+    displayName: user.display_name,
+    headline: user.headline ?? undefined,
+    distanceLabel: user.distance_label ?? undefined,
     lastSeenAt: now,
   }));
 }
