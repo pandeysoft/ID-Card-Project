@@ -15,21 +15,6 @@ export async function extractBusinessCardFromImage(
     throw new Error('Image URI is required for business card extraction.');
   }
 
-  await delay(650);
-
-  return {
-    name: 'Maya Reed',
-    title: 'Partnerships Lead',
-    company: 'Northstar Labs',
-    emails: ['maya@northstarlabs.com'],
-    phones: ['+1 512 555 0184'],
-    websites: ['https://northstarlabs.com'],
-    address: 'Austin, TX',
-  };
-}
-
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
+  // TODO: Wire a real OCR provider here. Beta builds must not create fake parsed contacts.
+  throw new Error('Business card OCR is coming soon.');
 }

@@ -82,6 +82,7 @@ export function ScanScreen() {
     setCardSaveMessage(null);
 
     try {
+      // TODO: Replace this beta-disabled call with real OCR provider extraction.
       setExtractedCard(await extractBusinessCardFromImage(capturedCardUri));
     } catch (error) {
       setCaptureError(error instanceof Error ? error.message : 'Unable to extract contact.');
@@ -204,7 +205,7 @@ export function ScanScreen() {
           )}
         </View>
 
-        {extractingCard ? <Text style={styles.loadingText}>Extracting contact...</Text> : null}
+        {extractingCard ? <Text style={styles.loadingText}>Checking OCR availability...</Text> : null}
         {captureError ? <Text style={styles.errorText}>{captureError}</Text> : null}
 
         {extractedCard ? (
