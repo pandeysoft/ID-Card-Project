@@ -1,36 +1,16 @@
 import type { Profile, ProfileLink, ProfileType } from '../../types';
+import type { Database } from '../../types/database';
 import type {
   CreateProfileInput,
   UpdateProfileInput,
 } from '../profileService';
 
-export type ProfileRow = {
-  id: string;
-  user_id: string;
-  type: ProfileType;
-  public_slug: string;
-  name: string;
-  headline: string | null;
-  company?: string | null;
-  bio: string | null;
-  email: string | null;
-  phone: string | null;
-  location: string | null;
-  avatar_url: string | null;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-};
+export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
-export type ProfileLinkRow = {
-  id: string;
-  profile_id: string;
-  label: string;
-  url: string;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
-};
+export type ProfileLinkRow = Database['public']['Tables']['profile_links']['Row'];
+
+type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
+type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 
 export type ProfileWithLinksRow = ProfileRow & {
   profile_links?: ProfileLinkRow[] | null;
@@ -57,7 +37,7 @@ export function mapProfileRowToProfile(row: ProfileWithLinksRow): Profile {
   };
 }
 
-export function mapProfileToInsert(profile: CreateProfileInput) {
+export function mapProfileToInsert(profile: CreateProfileInput): ProfileInsert {
   return {
     user_id: profile.userId,
     type: profile.type,
@@ -74,7 +54,7 @@ export function mapProfileToInsert(profile: CreateProfileInput) {
   };
 }
 
-export function mapProfileUpdatesToRow(updates: UpdateProfileInput) {
+export function mapProfileUpdatesToRow(updates: UpdateProfileInput): ProfileUpdate {
   return {
     ...(updates.type ? { type: updates.type } : {}),
     ...(updates.publicSlug ? { public_slug: updates.publicSlug } : {}),
