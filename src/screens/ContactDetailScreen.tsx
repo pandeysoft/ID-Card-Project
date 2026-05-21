@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { RouteProp } from '@react-navigation/native';
+import { useNavigation, type RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
@@ -11,13 +12,14 @@ import type { LeadStatus, SavedContact } from '../types';
 import type { RootStackParamList } from '../types/navigation';
 
 type ContactDetailScreenProps = {
-  onBack: () => void;
+  onBack?: () => void;
   route: RouteProp<RootStackParamList, 'ContactDetail'>;
 };
 
 const leadStatuses: LeadStatus[] = ['new', 'contacted', 'qualified', 'converted', 'lost'];
 
 export function ContactDetailScreen({ onBack, route }: ContactDetailScreenProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { isDevelopmentAuthBypass, user } = useAuth();
   const { contactId } = route.params;
   const [localContact, setLocalContact] = useState<SavedContact | null>(null);
@@ -121,7 +123,7 @@ export function ContactDetailScreen({ onBack, route }: ContactDetailScreenProps)
   return (
     <Screen title="Contact" subtitle="Saved contact details and follow-up context.">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Pressable onPress={onBack} style={({ pressed }) => [styles.backButton, pressed ? styles.pressed : null]}>
+        <Pressable onPress={onBack ?? navigation.goBack} style={({ pressed }) => [styles.backButton, pressed ? styles.pressed : null]}>
           <Text style={styles.backButtonText}>Back to contacts</Text>
         </Pressable>
 

@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
 import { mockLeads, mockSavedContacts } from '../lib/mockData';
-import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
 import { getContacts } from '../services/contactService';
 import { generateVCardFromContact, shareVCardFile } from '../services/vcardService';
 import { colors, spacing, typography } from '../theme';
 import type { SavedContact } from '../types';
+import type { RootStackParamList } from '../types/navigation';
 
 type ContactFilter = 'all' | 'personal' | 'professional' | 'lead';
 
@@ -21,7 +23,7 @@ const contactsPageSize = 25;
 
 export function ContactsScreen() {
   const { isDevelopmentAuthBypass, user, loading: authLoading } = useAuth();
-  const { openContactDetail } = useEditProfileNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [savedContacts, setSavedContacts] = useState<SavedContact[]>([...mockSavedContacts]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [contactsLoadingMore, setContactsLoadingMore] = useState(false);
@@ -179,7 +181,7 @@ export function ContactsScreen() {
           {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
           {contactsLoading ? <Text style={styles.loading}>Loading contacts...</Text> : null}
           {contacts.map((contact) => (
-            <ContactRow key={contact.id} contact={contact} onOpen={() => openContactDetail(contact)} />
+            <ContactRow key={contact.id} contact={contact} onOpen={() => navigation.navigate('ContactDetail', { contactId: contact.id })} />
           ))}
           {hasMoreContacts ? (
             <Pressable

@@ -1,9 +1,10 @@
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
-import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
 import {
   extractBusinessCardFromImage,
   type ExtractedBusinessCard,
@@ -11,12 +12,13 @@ import {
 import { createContact } from '../services/contactService';
 import { colors, spacing, typography } from '../theme';
 import type { SavedContact } from '../types';
+import type { RootStackParamList } from '../types/navigation';
 
 type ScanMode = 'menu' | 'qr' | 'businessCard';
 
 export function ScanScreen() {
   const { isDevelopmentAuthBypass, user } = useAuth();
-  const { openPublicProfilePreview } = useEditProfileNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const cameraRef = useRef<CameraView>(null);
   const [mode, setMode] = useState<ScanMode>('menu');
   const [permission, requestPermission] = useCameraPermissions();
@@ -138,7 +140,7 @@ export function ScanScreen() {
       const publicSlug = getCardIqPublicSlug(result.data);
 
       if (publicSlug) {
-        openPublicProfilePreview(publicSlug);
+        navigation.navigate('PublicProfile', { publicSlug, devPreview: false });
       }
 
       return result.data;

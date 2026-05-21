@@ -8,10 +8,13 @@ export type RootStackParamList = {
   EditProfile: {
     profileId: string;
   };
+  LeadCapturePreview: undefined;
   LeadsPreview: undefined;
   LeadDetail: {
     leadId: string;
   };
+  NetworkingPreview: undefined;
+  OnboardingPreview: undefined;
   PublicProfile:
     | {
         publicSlug?: string;

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { RouteProp } from '@react-navigation/native';
+import { useNavigation, type RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
 import { mockLeads } from '../lib/mockData';
-import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
 import { getLeads } from '../services/leadService';
 import { colors, spacing, typography } from '../theme';
 import type { Lead, LeadStatus } from '../types';
@@ -29,7 +29,7 @@ const leadsPageSize = 25;
 export function LeadsScreen({ onClose, route }: LeadsScreenProps) {
   void route;
   const { isDevelopmentAuthBypass, loading: authLoading, user } = useAuth();
-  const { openLeadDetail } = useEditProfileNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [savedLeads, setSavedLeads] = useState<Lead[]>([...mockLeads]);
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [leadsLoadingMore, setLeadsLoadingMore] = useState(false);
@@ -176,7 +176,7 @@ export function LeadsScreen({ onClose, route }: LeadsScreenProps) {
           {leadsLoading ? <Text style={styles.loading}>Loading leads...</Text> : null}
           {leads.length === 0 ? <Text style={styles.empty}>No leads match this search.</Text> : null}
           {leads.map((lead) => (
-            <LeadRow key={lead.id} lead={lead} onOpen={() => openLeadDetail(lead)} />
+            <LeadRow key={lead.id} lead={lead} onOpen={() => navigation.navigate('LeadDetail', { leadId: lead.id })} />
           ))}
           {hasMoreLeads ? (
             <Pressable

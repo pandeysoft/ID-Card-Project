@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { RouteProp } from '@react-navigation/native';
+import { useNavigation, type RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
@@ -10,13 +11,14 @@ import type { Lead, LeadStatus } from '../types';
 import type { RootStackParamList } from '../types/navigation';
 
 type LeadDetailScreenProps = {
-  onBack: () => void;
+  onBack?: () => void;
   route: RouteProp<RootStackParamList, 'LeadDetail'>;
 };
 
 const statuses: LeadStatus[] = ['new', 'contacted', 'qualified', 'converted', 'lost'];
 
 export function LeadDetailScreen({ onBack, route }: LeadDetailScreenProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { isDevelopmentAuthBypass, user } = useAuth();
   const { leadId } = route.params;
   const [localLead, setLocalLead] = useState<Lead | null>(null);
@@ -92,7 +94,7 @@ export function LeadDetailScreen({ onBack, route }: LeadDetailScreenProps) {
   return (
     <Screen title="Lead" subtitle="Lead details and current follow-up status.">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Pressable onPress={onBack} style={({ pressed }) => [styles.backButton, pressed ? styles.pressed : null]}>
+        <Pressable onPress={onBack ?? navigation.goBack} style={({ pressed }) => [styles.backButton, pressed ? styles.pressed : null]}>
           <Text style={styles.backButtonText}>Back to leads</Text>
         </Pressable>
 

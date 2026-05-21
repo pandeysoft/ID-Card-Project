@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
 import { mockUser } from '../lib/mockData';
-import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
 import { signOut } from '../services/authService';
 import { colors, spacing, typography } from '../theme';
+import type { RootStackParamList } from '../types/navigation';
 
 const sections = [
   {
@@ -32,7 +34,7 @@ const sections = [
 
 export function SettingsScreen() {
   const { clearDevelopmentAuthBypass, isDevelopmentAuthBypass } = useAuth();
-  const { openLeadCapturePreview, openLeadsPreview, openNetworkingPreview, openOnboardingPreview, openPublicProfilePreview } = useEditProfileNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
@@ -91,11 +93,11 @@ export function SettingsScreen() {
               ) : null}
               {__DEV__ && section.title === 'Profiles' ? (
                 <>
-                  <SettingsRow label="Preview Public Profile" onPress={openPublicProfilePreview} />
-                  <SettingsRow label="Preview Lead Capture" onPress={openLeadCapturePreview} />
-                  <SettingsRow label="Preview Leads" onPress={openLeadsPreview} />
-                  <SettingsRow label="Preview Networking" onPress={openNetworkingPreview} />
-                  <SettingsRow label="Preview Onboarding" onPress={openOnboardingPreview} />
+                  <SettingsRow label="Preview Public Profile" onPress={() => navigation.navigate('PublicProfile', { devPreview: true })} />
+                  <SettingsRow label="Preview Lead Capture" onPress={() => navigation.navigate('LeadCapturePreview')} />
+                  <SettingsRow label="Preview Leads" onPress={() => navigation.navigate('LeadsPreview')} />
+                  <SettingsRow label="Preview Networking" onPress={() => navigation.navigate('NetworkingPreview')} />
+                  <SettingsRow label="Preview Onboarding" onPress={() => navigation.navigate('OnboardingPreview')} />
                 </>
               ) : null}
             </View>

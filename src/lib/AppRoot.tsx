@@ -2,8 +2,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthProvider, OnboardingProvider, useAuth, useOnboarding } from '../contexts';
-import { RootNavigator } from '../navigation/EditProfileNavigation';
+import { AuthProvider, OnboardingProvider, ProfileProvider, useAuth, useOnboarding } from '../contexts';
+import { RootStack } from '../navigation/RootStack';
 import { AuthScreen } from '../screens/AuthScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { colors } from '../theme';
@@ -73,7 +73,9 @@ function AuthGate() {
 
   return (
     <NavigationContainer theme={theme.navigation}>
-      <RootNavigator />
+      <ProfileProvider>
+        <RootStack />
+      </ProfileProvider>
     </NavigationContainer>
   );
 }

@@ -1,13 +1,15 @@
 import { useState, type ReactNode } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProfileQrCode } from '../components/ProfileQrCode';
 import { useProfiles } from '../contexts';
 import { mockBusinessProfile } from '../lib/mockData';
-import { useEditProfileNavigation } from '../navigation/EditProfileNavigation';
 import { generateVCardFromProfile, shareVCardFile } from '../services/vcardService';
 import { spacing } from '../theme';
 import type { Profile, ProfileType } from '../types';
+import type { RootStackParamList } from '../types/navigation';
 
 const profileLabels: Record<ProfileType, string> = {
   personal: 'Personal',
@@ -31,7 +33,7 @@ type RowIcon =
   | 'calendar';
 
 export function MyCardScreen() {
-  const { openEditProfile } = useEditProfileNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const {
     activeProfile,
     activeProfileId,
@@ -61,7 +63,7 @@ export function MyCardScreen() {
               selectorOpen={selectorOpen}
               onToggleSelector={() => setSelectorOpen((open) => !open)}
               onSelectProfile={selectProfile}
-              onEdit={() => openEditProfile(activeProfile.id)}
+              onEdit={() => navigation.navigate('EditProfile', { profileId: activeProfile.id })}
               onFlip={() => setCardSide('qr')}
             />
           ) : (
