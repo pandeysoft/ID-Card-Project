@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../contexts';
+import { isDevAuthBypassAllowed, useAuth } from '../contexts';
 import { signInWithEmail, signInWithGoogle } from '../services/authService';
 import { colors, spacing, typography } from '../theme';
 
@@ -17,6 +17,7 @@ type AuthMethod = 'email' | 'google' | 'demo';
 
 export function AuthScreen() {
   const { enableDevelopmentAuthBypass } = useAuth();
+  const canUseDevAuthBypass = isDevAuthBypassAllowed();
   const [email, setEmail] = useState('');
   const [loadingMethod, setLoadingMethod] = useState<AuthMethod | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -61,6 +62,11 @@ export function AuthScreen() {
   }
 
   function handleDemoSignIn() {
+    // DEV ONLY: must not be enabled in production/release builds.
+    if (!canUseDevAuthBypass) {
+      return;
+    }
+
     setLoadingMethod('demo');
     setErrorMessage(null);
     setSent(false);
@@ -114,7 +120,7 @@ export function AuthScreen() {
             </Text>
           ) : null}
 
-          {__DEV__ ? (
+          {canUseDevAuthBypass ? (
             <>
               <Text style={styles.debugNote}>
                 For local testing, check Supabase Dashboard -&gt; Authentication -&gt; Logs.

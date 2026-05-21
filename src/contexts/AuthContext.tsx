@@ -37,6 +37,11 @@ const developmentUser: User = {
   user_metadata: { display_name: 'Demo User' },
 };
 
+export function isDevAuthBypassAllowed() {
+  // DEV ONLY: this must never be enabled in production/release builds.
+  return __DEV__ === true;
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -106,7 +111,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [developmentBypassEnabled, user]);
 
   function enableDevelopmentAuthBypass() {
-    if (!__DEV__) {
+    // DEV ONLY: fake auth state must not be reachable in production.
+    if (!isDevAuthBypassAllowed()) {
       return;
     }
 
@@ -117,7 +123,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   function clearDevelopmentAuthBypass() {
-    if (!__DEV__) {
+    // DEV ONLY: fake auth state must not be reachable in production.
+    if (!isDevAuthBypassAllowed()) {
       return;
     }
 
@@ -132,8 +139,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       session,
       user,
       loading,
-      isAuthenticated: Boolean(session?.user) || developmentBypassEnabled,
-      isDevelopmentAuthBypass: developmentBypassEnabled,
+      isAuthenticated: Boolean(session?.user) || (isDevAuthBypassAllowed() && developmentBypassEnabled),
+      isDevelopmentAuthBypass: isDevAuthBypassAllowed() && developmentBypassEnabled,
       enableDevelopmentAuthBypass,
       clearDevelopmentAuthBypass,
     }),
