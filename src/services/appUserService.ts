@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { AppUser } from '../types';
+import type { Database } from '../types/database';
 
 export type UpsertAppUserInput = {
   id: string;
@@ -7,15 +8,7 @@ export type UpsertAppUserInput = {
   displayName?: string;
 };
 
-type AppUserRow = {
-  id: string;
-  email: string | null;
-  display_name: string | null;
-  onboarding_completed: boolean;
-  onboarding_completed_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type AppUserRow = Database['public']['Tables']['app_users']['Row'];
 
 function assertNoError(error: Error | null, fallbackMessage: string): void {
   if (error) {
