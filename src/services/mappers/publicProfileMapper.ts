@@ -1,34 +1,18 @@
 import type {
-  BusinessProfile,
-  ProfileLink,
-  ProfileType,
   PublicProfile,
 } from '../../types';
+import type { Database, PublicProfilePublishedData } from '../../types/database';
 import type {
   CreatePublicProfileInput,
   UpdatePublicProfileInput,
 } from '../publicProfileService';
 
-export type PublicProfilePublishedData = {
-  type?: ProfileType;
-  links?: ProfileLink[];
-  business?: BusinessProfile;
-};
+export type { PublicProfilePublishedData };
 
-export type PublicProfileRow = {
-  id: string;
-  profile_id: string;
-  user_id: string;
-  public_slug: string;
-  name: string;
-  headline: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-  published_data: PublicProfilePublishedData | null;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-};
+export type PublicProfileRow = Database['public']['Tables']['public_profiles']['Row'];
+
+type PublicProfileInsert = Database['public']['Tables']['public_profiles']['Insert'];
+type PublicProfileUpdate = Database['public']['Tables']['public_profiles']['Update'];
 
 export function mapPublicProfileRowToPublicProfile(
   row: PublicProfileRow,
@@ -49,7 +33,7 @@ export function mapPublicProfileRowToPublicProfile(
 
 export function mapPublicProfileToInsert(
   publicProfile: CreatePublicProfileInput,
-) {
+): PublicProfileInsert {
   return {
     profile_id: publicProfile.profileId,
     user_id: publicProfile.userId,
@@ -69,7 +53,7 @@ export function mapPublicProfileToInsert(
 
 export function mapPublicProfileUpdatesToRow(
   updates: UpdatePublicProfileInput,
-) {
+): PublicProfileUpdate {
   return {
     ...(updates.name !== undefined ? { name: updates.name } : {}),
     ...(updates.headline !== undefined ? { headline: updates.headline } : {}),

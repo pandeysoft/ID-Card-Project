@@ -1,3 +1,11 @@
+import type { BusinessProfile, ProfileLink, ProfileType } from './cardiq';
+
+export type PublicProfilePublishedData = {
+  type?: ProfileType;
+  links?: readonly ProfileLink[];
+  business?: BusinessProfile;
+};
+
 /**
  * Temporary hand-maintained Supabase Database type.
  *
@@ -207,7 +215,7 @@ export type Database = {
           headline: string | null;
           bio: string | null;
           avatar_url: string | null;
-          published_data: unknown;
+          published_data: PublicProfilePublishedData | null;
           is_public: boolean;
           created_at: string;
           updated_at: string;
@@ -221,7 +229,7 @@ export type Database = {
           headline?: string | null;
           bio?: string | null;
           avatar_url?: string | null;
-          published_data?: unknown;
+          published_data?: PublicProfilePublishedData | null;
           is_public?: boolean;
         };
         Update: {
@@ -233,7 +241,7 @@ export type Database = {
           headline?: string | null;
           bio?: string | null;
           avatar_url?: string | null;
-          published_data?: unknown;
+          published_data?: PublicProfilePublishedData | null;
           is_public?: boolean;
         };
       };
