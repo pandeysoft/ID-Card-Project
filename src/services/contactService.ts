@@ -7,6 +7,7 @@ import {
 } from './mappers/contactMapper';
 import type {
   Profile,
+  ProfileLink,
   SavedContact,
 } from '../types';
 
@@ -107,7 +108,7 @@ export async function createContactFromProfile(
   ownerUserId: string,
   source: ContactSource,
 ): Promise<SavedContact> {
-  return createContact({
+  const contact = await createContact({
     userId: ownerUserId,
     profileId: profile.id,
     name: profile.name,
@@ -119,6 +120,14 @@ export async function createContactFromProfile(
     notes: `Source: ${source}`,
     tags: [source],
   });
+
+  try {
+    await saveContactLinksFromProfile(contact.id, ownerUserId, profile.links);
+    return (await getContactById(contact.id)) ?? contact;
+  } catch {
+    console.warn('CardIQ contact links failed to save after contact creation.');
+    return contact;
+  }
 }
 
 export async function updateContact(
@@ -160,4 +169,30 @@ export async function syncLinkedContact(
   }
 
   return contact;
+}
+
+async function saveContactLinksFromProfile(
+  contactId: string,
+  userId: string,
+  links: readonly ProfileLink[],
+): Promise<void> {
+  const visibleLinks = links.filter((link) => link.isVisible !== false);
+
+  if (visibleLinks.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from('contact_links')
+    .insert(
+      visibleLinks.map((link, index) => ({
+        contact_id: contactId,
+        user_id: userId,
+        label: link.label,
+        url: link.url,
+        display_order: link.order ?? index,
+      })),
+    );
+
+  assertNoError(error, 'Unable to save contact links.');
 }
