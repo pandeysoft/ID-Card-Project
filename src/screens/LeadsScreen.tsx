@@ -73,8 +73,9 @@ export function LeadsScreen({ onClose, route }: LeadsScreenProps) {
         console.warn('CardIQ leads failed to load.', error);
 
         if (mounted) {
-          setSavedLeads([...mockLeads]);
-          setErrorMessage('Unable to load leads. Showing demo leads.');
+          setSavedLeads([]);
+          setHasMoreLeads(false);
+          setErrorMessage('Unable to load leads.');
         }
       } finally {
         if (mounted) {
