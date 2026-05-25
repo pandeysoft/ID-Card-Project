@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { useAuth } from '../contexts';
 import { mockUser } from '../lib/mockData';
+import { getAppUser } from '../services/appUserService';
 import { signOut } from '../services/authService';
 import { colors, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../types/navigation';
@@ -33,9 +34,58 @@ const sections = [
 ];
 
 export function SettingsScreen() {
-  const { clearDevelopmentAuthBypass, isDevelopmentAuthBypass } = useAuth();
+  const { clearDevelopmentAuthBypass, isDevelopmentAuthBypass, user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [appUserDisplayName, setAppUserDisplayName] = useState<string | undefined>();
+  const [appUserEmail, setAppUserEmail] = useState<string | undefined>();
   const [signingOut, setSigningOut] = useState(false);
+  const accountDisplay = useMemo(
+    () =>
+      isDevelopmentAuthBypass
+        ? {
+            displayName: mockUser.displayName,
+            email: mockUser.email,
+            plan: mockUser.accountPlan,
+            role: mockUser.role,
+          }
+        : {
+            displayName: appUserDisplayName ?? getAuthDisplayName(user) ?? 'CardIQ User',
+            email: appUserEmail ?? user?.email ?? 'No email available',
+            plan: 'free',
+            role: 'user',
+          },
+    [appUserDisplayName, appUserEmail, isDevelopmentAuthBypass, user],
+  );
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadAppUser() {
+      setAppUserDisplayName(undefined);
+      setAppUserEmail(undefined);
+
+      if (!user || isDevelopmentAuthBypass) {
+        return;
+      }
+
+      try {
+        const appUser = await getAppUser(user.id);
+
+        if (mounted) {
+          setAppUserDisplayName(appUser?.displayName);
+          setAppUserEmail(appUser?.email);
+        }
+      } catch (error) {
+        console.warn('CardIQ settings app user failed to load.', error);
+      }
+    }
+
+    void loadAppUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isDevelopmentAuthBypass, user]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -61,17 +111,17 @@ export function SettingsScreen() {
           <View style={styles.planTop}>
             <View>
               <Text style={styles.kicker}>CURRENT PLAN</Text>
-              <Text style={styles.planName}>{formatPlan(mockUser.accountPlan)}</Text>
+              <Text style={styles.planName}>{formatPlan(accountDisplay.plan)}</Text>
             </View>
             <View style={styles.statusPill}>
               <View style={styles.statusDot} />
               <Text style={styles.statusText}>Active</Text>
             </View>
           </View>
-          <Text style={styles.userName}>{mockUser.displayName}</Text>
-          <Text style={styles.userEmail}>{mockUser.email}</Text>
+          <Text style={styles.userName}>{accountDisplay.displayName}</Text>
+          <Text style={styles.userEmail}>{accountDisplay.email}</Text>
           <View style={styles.planMeta}>
-            <Text style={styles.planMetaText}>{formatRole(mockUser.role)}</Text>
+            <Text style={styles.planMetaText}>{formatRole(accountDisplay.role)}</Text>
             <Text style={styles.planMetaDivider}>·</Text>
             <Text style={styles.planMetaText}>CardIQ workspace</Text>
           </View>
@@ -138,6 +188,16 @@ function formatPlan(plan: string) {
 
 function formatRole(role: string) {
   return `${role[0].toUpperCase()}${role.slice(1)}`;
+}
+
+function getAuthDisplayName(user: ReturnType<typeof useAuth>['user']) {
+  const metadataName = user?.user_metadata?.display_name;
+
+  if (typeof metadataName === 'string' && metadataName.trim().length > 0) {
+    return metadataName.trim();
+  }
+
+  return undefined;
 }
 
 const styles = StyleSheet.create({
