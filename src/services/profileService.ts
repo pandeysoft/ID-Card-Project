@@ -113,6 +113,8 @@ export async function publishPublicProfile(
     throw new Error('Cannot publish a profile that does not exist.');
   }
 
+  // Private profiles are mirrored with is_public=false so the public RLS policy
+  // blocks slug reads while still letting owner edits safely unpublish them.
   const { error } = await supabase
     .from('public_profiles')
     .upsert(

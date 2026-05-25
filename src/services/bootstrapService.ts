@@ -2,6 +2,7 @@ import type { User } from '@supabase/supabase-js';
 import {
   createProfile,
   getProfiles,
+  publishPublicProfile,
   type CreateProfileInput,
 } from './profileService';
 import type { Profile } from '../types';
@@ -14,6 +15,7 @@ export async function initializeUserProfiles(user: User): Promise<Profile[]> {
   const existingProfiles = await getProfiles(user.id);
 
   if (existingProfiles.length > 0) {
+    await publishProfilesForQr(existingProfiles);
     return existingProfiles;
   }
 
@@ -25,7 +27,9 @@ export async function initializeUserProfiles(user: User): Promise<Profile[]> {
     const createdProfiles: Profile[] = [];
 
     for (const profile of defaults) {
-      createdProfiles.push(await createProfile(profile));
+      const createdProfile = await createProfile(profile);
+      createdProfiles.push(createdProfile);
+      await publishProfileForQr(createdProfile);
     }
 
     return createdProfiles;
@@ -86,6 +90,20 @@ function getDisplayName(user: User): string {
   }
 
   return 'CardIQ User';
+}
+
+async function publishProfilesForQr(profiles: Profile[]): Promise<void> {
+  for (const profile of profiles) {
+    await publishProfileForQr(profile);
+  }
+}
+
+async function publishProfileForQr(profile: Profile): Promise<void> {
+  try {
+    await publishPublicProfile(profile.id);
+  } catch {
+    console.warn('CardIQ public profile publish failed during profile bootstrap.');
+  }
 }
 
 function slugify(value: string): string {

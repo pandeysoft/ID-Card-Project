@@ -5,7 +5,7 @@ import { mockProfiles } from '../lib/mockData';
 import { getAvatarPublicUrl, uploadProfileAvatar } from '../services/avatarService';
 import { initializeUserProfiles } from '../services/bootstrapService';
 import { getProfileLinks, replaceProfileLinks } from '../services/profileLinkService';
-import { getProfiles, updateProfile } from '../services/profileService';
+import { getProfiles, publishPublicProfile, updateProfile } from '../services/profileService';
 import type { Profile } from '../types';
 import type { EditProfileForm } from '../screens/EditProfileScreen';
 
@@ -138,6 +138,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           order: index,
         })),
     );
+
+    try {
+      await publishPublicProfile(profileId);
+    } catch {
+      console.warn('CardIQ public profile publish failed after profile save.');
+    }
   }
 
   return (
