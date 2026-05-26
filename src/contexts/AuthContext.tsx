@@ -13,7 +13,9 @@ import { initializeUserProfiles } from '../services/bootstrapService';
 import {
   getCurrentSession,
   handleAuthCallbackUrl,
+  isAuthCallbackUrl,
   onAuthStateChange,
+  sanitizeAuthUrlForLog,
 } from '../services/authService';
 
 type AuthContextValue = {
@@ -57,8 +59,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const initialUrl = await Linking.getInitialURL();
 
         if (initialUrl) {
-          await handleAuthCallbackUrl(initialUrl).catch((error) => {
-            console.warn('CardIQ auth callback failed.', error);
+          await handleIncomingAuthUrl(initialUrl).catch((error) => {
+            console.warn('CardIQ auth callback failed:', getErrorMessage(error));
           });
         }
 
@@ -80,8 +82,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     void loadSession();
 
     const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
-      void handleAuthCallbackUrl(url).catch((error) => {
-        console.warn('CardIQ auth callback failed.', error);
+      void handleIncomingAuthUrl(url).catch((error) => {
+        console.warn('CardIQ auth callback failed:', getErrorMessage(error));
       });
     });
 
@@ -96,6 +98,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
       linkingSubscription.remove();
       subscription.unsubscribe();
     };
+
+    async function handleIncomingAuthUrl(url: string) {
+      if (!isAuthCallbackUrl(url)) {
+        return;
+      }
+
+      console.log('CardIQ auth callback received:', sanitizeAuthUrlForLog(url));
+      const nextSession = await handleAuthCallbackUrl(url);
+
+      if (!mounted || !nextSession) {
+        return;
+      }
+
+      setSession(nextSession);
+      setUser(nextSession.user);
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -158,4 +177,8 @@ export function useAuth() {
   }
 
   return value;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown auth callback error.';
 }

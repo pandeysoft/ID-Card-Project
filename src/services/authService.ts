@@ -1,14 +1,15 @@
 import type { AuthChangeEvent, Session, Subscription, User } from '@supabase/supabase-js';
-import { Linking } from 'react-native';
+import * as AuthSession from 'expo-auth-session';
 import { supabase } from './supabase';
-
-const authRedirectTo = 'cardiq://auth/callback';
 
 // Google OAuth setup required:
 // 1. Enable Google provider in Supabase Dashboard -> Authentication -> Providers.
 // 2. Add Google OAuth client ID/secret from Google Cloud Console to Supabase.
 // 3. Add the Supabase OAuth callback URL to Google Console authorized redirect URIs.
-// 4. Add cardiq://auth/callback to Supabase Dashboard -> Authentication -> URL Configuration.
+// 4. Add the redirect URLs from getAuthRedirectTo() to Supabase Dashboard -> Authentication -> URL Configuration.
+
+const authRedirectPath = 'auth/callback';
+const productionNativeRedirectTo = 'cardiq://auth/callback';
 
 export type AuthStateChangeCallback = (
   event: AuthChangeEvent,
@@ -30,10 +31,13 @@ export async function signInWithEmail(email: string): Promise<void> {
     throw new Error('Email is required to sign in.');
   }
 
+  const redirectTo = getAuthRedirectTo();
+  console.log('CardIQ auth redirectTo:', redirectTo);
+
   const { error } = await supabase.auth.signInWithOtp({
     email: normalizedEmail,
     options: {
-      emailRedirectTo: authRedirectTo,
+      emailRedirectTo: redirectTo,
     },
   });
 
@@ -44,10 +48,13 @@ export async function signInWithEmail(email: string): Promise<void> {
 }
 
 export async function signInWithGoogle(): Promise<void> {
+  const redirectTo = getAuthRedirectTo();
+  console.log('CardIQ auth redirectTo:', redirectTo);
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: authRedirectTo,
+      redirectTo,
       skipBrowserRedirect: true,
     },
   });
@@ -61,16 +68,44 @@ export async function signInWithGoogle(): Promise<void> {
     throw new Error('Unable to start Google sign-in.');
   }
 
-  const canOpen = await Linking.canOpenURL(data.url);
+  const authRequest = new AuthSession.AuthRequest({
+    clientId: 'supabase',
+    redirectUri: redirectTo,
+    responseType: AuthSession.ResponseType.Code,
+    state: getAuthParams(data.url).get('state') ?? undefined,
+    usePKCE: false,
+  });
 
-  if (!canOpen) {
-    throw new Error('Unable to open Google sign-in URL.');
+  const result = await authRequest.promptAsync(
+    { authorizationEndpoint: data.url },
+    { url: data.url },
+  );
+  const resultUrl = 'url' in result ? result.url : undefined;
+  console.log('CardIQ Google OAuth AuthSession result:', {
+    type: result.type,
+    hasUrl: Boolean(resultUrl),
+    url: resultUrl ? sanitizeAuthUrlForLog(resultUrl) : undefined,
+  });
+
+  if (result.type === 'success') {
+    await handleAuthCallbackUrl(result.url);
+    return;
   }
 
-  await Linking.openURL(data.url);
+  if (result.type === 'error') {
+    throw new Error(result.error?.message || 'Google sign-in failed.');
+  }
+
+  if (result.type !== 'cancel' && result.type !== 'dismiss') {
+    throw new Error('Google sign-in did not complete.');
+  }
 }
 
 export async function handleAuthCallbackUrl(url: string): Promise<Session | null> {
+  if (!isAuthCallbackUrl(url)) {
+    return null;
+  }
+
   const params = getAuthParams(url);
   const code = params.get('code');
 
@@ -79,6 +114,7 @@ export async function handleAuthCallbackUrl(url: string): Promise<Session | null
     const authError = toAuthError(error);
 
     if (authError) {
+      console.warn('CardIQ exchangeCodeForSession error:', authError.message);
       throw authError;
     }
 
@@ -144,6 +180,35 @@ export function onAuthStateChange(
   });
 
   return data.subscription;
+}
+
+function getAuthRedirectTo(): string {
+  // Expo Go/dev: AuthSession generates a reachable exp://.../--/auth/callback URL
+  // for the current Metro host instead of using localhost or a fixed custom scheme.
+  // Production: keep cardiq://auth/callback for standalone builds until universal
+  // links/app links are configured, then replace native with that production URL.
+  return AuthSession.makeRedirectUri({
+    native: productionNativeRedirectTo,
+    path: authRedirectPath,
+    scheme: 'cardiq',
+  });
+}
+
+export function isAuthCallbackUrl(url: string): boolean {
+  return url.includes(authRedirectPath);
+}
+
+export function sanitizeAuthUrlForLog(url: string): string {
+  try {
+    const parsedUrl = new URL(url);
+    const origin = parsedUrl.host
+      ? `${parsedUrl.protocol}//${parsedUrl.host}`
+      : parsedUrl.protocol;
+
+    return `${origin}${parsedUrl.pathname}`;
+  } catch {
+    return url.split(/[?#]/)[0] ?? '';
+  }
 }
 
 function getAuthParams(url: string): URLSearchParams {
