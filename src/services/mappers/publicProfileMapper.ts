@@ -10,6 +10,8 @@ import type {
 export type { PublicProfilePublishedData };
 
 export type PublicProfileRow = Database['public']['Tables']['public_profiles']['Row'];
+export type PublicSafeProfileRow =
+  Database['public']['Functions']['get_public_profile_by_slug']['Returns'][number];
 
 type PublicProfileInsert = Database['public']['Tables']['public_profiles']['Insert'];
 type PublicProfileUpdate = Database['public']['Tables']['public_profiles']['Update'];
@@ -20,6 +22,23 @@ export function mapPublicProfileRowToPublicProfile(
   return {
     id: row.id,
     profileId: row.profile_id,
+    type: row.published_data?.type ?? 'professional',
+    name: row.name,
+    headline: row.headline ?? '',
+    bio: row.bio ?? '',
+    avatarUrl: row.avatar_url ?? undefined,
+    links: row.published_data?.links ?? [],
+    business: row.published_data?.business,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function mapPublicSafeProfileRowToPublicProfile(
+  row: PublicSafeProfileRow,
+): PublicProfile {
+  return {
+    id: row.public_slug,
+    profileId: row.public_slug,
     type: row.published_data?.type ?? 'professional',
     name: row.name,
     headline: row.headline ?? '',

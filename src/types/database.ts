@@ -375,5 +375,21 @@ export type Database = {
         };
       };
     };
+    Functions: {
+      get_public_profile_by_slug: {
+        Args: {
+          profile_slug: string;
+        };
+        Returns: Array<{
+          public_slug: string;
+          name: string;
+          headline: string | null;
+          bio: string | null;
+          avatar_url: string | null;
+          published_data: PublicProfilePublishedData | null;
+          updated_at: string;
+        }>;
+      };
+    };
   };
 };

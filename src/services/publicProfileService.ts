@@ -1,8 +1,10 @@
 import { supabase } from './supabase';
 import {
+  mapPublicSafeProfileRowToPublicProfile,
   mapPublicProfileRowToPublicProfile,
   mapPublicProfileToInsert,
   mapPublicProfileUpdatesToRow,
+  type PublicSafeProfileRow,
   type PublicProfileRow,
 } from './mappers/publicProfileMapper';
 import type {
@@ -40,15 +42,12 @@ export async function getPublicProfileBySlug(
   publicSlug: string,
 ): Promise<PublicProfile | null> {
   const { data, error } = await supabase
-    .from('public_profiles')
-    .select('*')
-    .eq('public_slug', publicSlug)
-    .eq('is_public', true)
-    .returns<PublicProfileRow[]>()
-    .maybeSingle();
+    .rpc('get_public_profile_by_slug', { profile_slug: publicSlug })
+    .returns<PublicSafeProfileRow[]>();
 
   assertNoError(error, 'Unable to load public profile.');
-  return data ? mapPublicProfileRowToPublicProfile(data) : null;
+  const rows = Array.isArray(data) ? data : [];
+  return rows[0] ? mapPublicSafeProfileRowToPublicProfile(rows[0]) : null;
 }
 
 export async function getPublicProfileByProfileId(

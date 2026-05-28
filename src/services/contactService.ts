@@ -110,7 +110,7 @@ export async function createContactFromProfile(
 ): Promise<SavedContact> {
   const contact = await createContact({
     userId: ownerUserId,
-    profileId: profile.id,
+    profileId: isUuid(profile.id) ? profile.id : undefined,
     name: profile.name,
     headline: profile.company ? `${profile.headline} at ${profile.company}` : profile.headline,
     bio: profile.bio,
@@ -128,6 +128,10 @@ export async function createContactFromProfile(
     console.warn('CardIQ contact links failed to save after contact creation.');
     return contact;
   }
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 export async function updateContact(
