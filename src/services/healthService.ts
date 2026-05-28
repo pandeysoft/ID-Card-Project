@@ -8,9 +8,7 @@ export type SupabaseHealthResult = {
 export async function checkSupabaseConnection(): Promise<SupabaseHealthResult> {
   try {
     const { error } = await supabase
-      .from('public_profiles')
-      .select('id')
-      .limit(1);
+      .rpc('get_public_profile_by_slug', { profile_slug: '__health_check__' });
 
     if (error) {
       return {
