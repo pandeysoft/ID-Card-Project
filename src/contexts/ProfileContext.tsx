@@ -109,6 +109,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
                 label: link.label,
                 url: link.value,
                 order: index,
+                isVisible: link.isVisible,
                 createdAt: profile.createdAt,
                 updatedAt: new Date().toISOString(),
               })),
@@ -147,6 +148,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           label: link.label.trim(),
           url: link.value.trim(),
           order: index,
+          isVisible: link.isVisible,
         })),
     );
 

@@ -6,6 +6,7 @@ export type ReplaceProfileLinkInput = {
   label: string;
   url: string;
   order: number;
+  isVisible: boolean;
 };
 
 function assertNoError(error: Error | null, fallbackMessage: string): void {
@@ -51,6 +52,7 @@ export async function replaceProfileLinks(
         label: link.label,
         url: link.url,
         display_order: link.order,
+        is_visible: link.isVisible,
       })),
     )
     .select('*')

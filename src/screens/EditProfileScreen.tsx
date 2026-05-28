@@ -16,6 +16,7 @@ export type EditableProfileLink = {
   type: ProfileLinkType;
   label: string;
   value: string;
+  isVisible: boolean;
 };
 
 export type EditProfileForm = {
@@ -48,6 +49,7 @@ export function EditProfileScreen({ onCancel, route }: EditProfileScreenProps) {
         type: getLinkType(link.label),
         label: link.label,
         value: link.url,
+        isVisible: link.isVisible !== false,
       })),
     }),
     [profile],
@@ -77,7 +79,7 @@ export function EditProfileScreen({ onCancel, route }: EditProfileScreenProps) {
       ...current,
       links: [
         ...current.links,
-        { id: `local-link-${Date.now()}`, type: 'website', label: 'Website', value: '' },
+        { id: `local-link-${Date.now()}`, type: 'website', label: 'Website', value: '', isVisible: true },
       ],
     }));
   }
@@ -203,6 +205,27 @@ export function EditProfileScreen({ onCancel, route }: EditProfileScreenProps) {
               </View>
               <ProfileField label="Label" onChangeText={(value) => updateLink(link.id, { label: value })} value={link.label} />
               <ProfileField label="Value" onChangeText={(value) => updateLink(link.id, { value })} value={link.value} />
+              <View style={styles.visibilityRow}>
+                <Text style={styles.visibilityLabel}>Public visibility</Text>
+                <View style={styles.visibilityActions}>
+                  <Pressable
+                    onPress={() => updateLink(link.id, { isVisible: true })}
+                    style={[styles.visibilityPill, link.isVisible ? styles.visibilityPillActive : null]}
+                  >
+                    <Text style={[styles.visibilityPillText, link.isVisible ? styles.visibilityPillTextActive : null]}>
+                      Public
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => updateLink(link.id, { isVisible: false })}
+                    style={[styles.visibilityPill, !link.isVisible ? styles.visibilityPillActive : null]}
+                  >
+                    <Text style={[styles.visibilityPillText, !link.isVisible ? styles.visibilityPillTextActive : null]}>
+                      Hidden
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
               <Pressable onPress={() => removeLink(link.id)} style={({ pressed }) => [styles.removeLinkButton, pressed ? styles.pressed : null]}>
                 <Text style={styles.removeLinkText}>Remove</Text>
               </Pressable>
@@ -386,6 +409,42 @@ const styles = StyleSheet.create({
   },
   typePillTextActive: {
     color: colors.surface,
+  },
+  visibilityRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  visibilityLabel: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.caption,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  visibilityActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  visibilityPill: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  visibilityPillActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  visibilityPillText: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.caption,
+    fontWeight: '800',
+  },
+  visibilityPillTextActive: {
+    color: colors.primary,
   },
   removeLinkButton: {
     alignSelf: 'flex-start',
