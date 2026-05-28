@@ -6,17 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProfileQrCode } from '../components/ProfileQrCode';
 import { useProfiles } from '../contexts';
 import { mockBusinessProfile } from '../lib/mockData';
+import { getProfileTemplate, profileLabels, profileTemplates } from '../lib/profileTemplates';
 import { generateVCardFromProfile, shareVCardFile } from '../services/vcardService';
 import { spacing } from '../theme';
 import type { Profile, ProfileType } from '../types';
 import type { RootStackParamList } from '../types/navigation';
-
-const profileLabels: Record<ProfileType, string> = {
-  personal: 'Personal',
-  professional: 'Professional',
-  acquaintance: 'Acquaintance',
-  business: 'Business',
-};
 
 type CardSide = 'profile' | 'qr';
 type CreateProfileForm = {
@@ -25,6 +19,11 @@ type CreateProfileForm = {
   company: string;
   bio: string;
   type: ProfileType;
+  links: Array<{
+    label: string;
+    value: string;
+    isVisible: boolean;
+  }>;
 };
 type RowIcon =
   | 'phone'
@@ -296,10 +295,15 @@ function ProfileManager({
 }) {
   const [form, setForm] = useState<CreateProfileForm>({
     displayName: '',
-    title: '',
+    title: getProfileTemplate('business').defaultHeadline,
     company: '',
-    bio: '',
-    type: 'professional',
+    bio: getProfileTemplate('business').defaultBio,
+    type: 'business',
+    links: getProfileTemplate('business').suggestedLinks.map((link) => ({
+      label: link.label,
+      value: '',
+      isVisible: link.isVisible,
+    })),
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -308,13 +312,43 @@ function ProfileManager({
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function selectTemplate(type: ProfileType) {
+    const template = getProfileTemplate(type);
+    setForm((current) => ({
+      ...current,
+      type,
+      title: current.title.trim() ? current.title : template.defaultHeadline,
+      bio: current.bio.trim() ? current.bio : template.defaultBio,
+      links: template.suggestedLinks.map((link) => ({
+        label: link.label,
+        value: '',
+        isVisible: link.isVisible,
+      })),
+    }));
+  }
+
+  function updateLink(index: number, value: string) {
+    setForm((current) => ({
+      ...current,
+      links: current.links.map((link, linkIndex) => (linkIndex === index ? { ...link, value } : link)),
+    }));
+  }
+
   async function handleCreate() {
     setSaving(true);
     setError(null);
 
     try {
       await onCreateProfile(form);
-      setForm({ displayName: '', title: '', company: '', bio: '', type: 'professional' });
+      const template = getProfileTemplate('business');
+      setForm({
+        displayName: '',
+        title: template.defaultHeadline,
+        company: '',
+        bio: template.defaultBio,
+        type: 'business',
+        links: template.suggestedLinks.map((link) => ({ label: link.label, value: '', isVisible: link.isVisible })),
+      });
       onToggle();
     } catch (profileError) {
       setError(profileError instanceof Error ? profileError.message : 'Unable to create profile.');
@@ -352,22 +386,23 @@ function ProfileManager({
       {open ? (
         <View style={styles.managerPanel}>
           <View style={styles.typeRow}>
-            {(Object.keys(profileLabels) as ProfileType[]).map((type) => (
+            {profileTemplates.map((template) => (
               <Pressable
-                key={type}
-                onPress={() => updateField('type', type)}
+                key={template.type}
+                onPress={() => selectTemplate(template.type)}
                 style={({ pressed }) => [
                   styles.typeChip,
-                  form.type === type && styles.typeChipActive,
+                  form.type === template.type && styles.typeChipActive,
                   pressed && styles.pressed,
                 ]}
               >
-                <Text style={[styles.typeChipText, form.type === type && styles.typeChipTextActive]}>
-                  {profileLabels[type]}
+                <Text style={[styles.typeChipText, form.type === template.type && styles.typeChipTextActive]}>
+                  {template.label}
                 </Text>
               </Pressable>
             ))}
           </View>
+          <Text style={styles.templateHint}>{getTemplateHint(form.type)}</Text>
           <TextInput
             autoCapitalize="words"
             onChangeText={(value) => updateField('displayName', value)}
@@ -378,14 +413,14 @@ function ProfileManager({
           />
           <TextInput
             onChangeText={(value) => updateField('title', value)}
-            placeholder="Title or headline"
+            placeholder={getProfileTemplate(form.type).headlinePlaceholder}
             placeholderTextColor="#94A3B8"
             style={styles.managerInput}
             value={form.title}
           />
           <TextInput
             onChangeText={(value) => updateField('company', value)}
-            placeholder="Company"
+            placeholder={getProfileTemplate(form.type).companyPlaceholder}
             placeholderTextColor="#94A3B8"
             style={styles.managerInput}
             value={form.company}
@@ -393,11 +428,21 @@ function ProfileManager({
           <TextInput
             multiline
             onChangeText={(value) => updateField('bio', value)}
-            placeholder="Bio"
+            placeholder={getProfileTemplate(form.type).bioPlaceholder}
             placeholderTextColor="#94A3B8"
             style={[styles.managerInput, styles.managerBioInput]}
             value={form.bio}
           />
+          {form.links.map((link, index) => (
+            <TextInput
+              key={`${link.label}-${index}`}
+              onChangeText={(value) => updateLink(index, value)}
+              placeholder={`${link.label} (${link.isVisible ? 'Public' : 'Hidden'})`}
+              placeholderTextColor="#94A3B8"
+              style={styles.managerInput}
+              value={link.value}
+            />
+          ))}
           {error ? <Text style={styles.managerError}>{error}</Text> : null}
           <View style={styles.managerActions}>
             <Pressable
@@ -687,6 +732,14 @@ function getProfileTitle(profile: Profile) {
   }
 
   return profile.headline;
+}
+
+function getTemplateHint(type: ProfileType) {
+  const template = getProfileTemplate(type);
+  const visibility = template.defaultIsPublic ? 'public' : 'private';
+  const links = template.suggestedLinks.map((link) => link.label).join(', ');
+
+  return `${template.label} defaults ${visibility}; suggested links: ${links}.`;
 }
 
 function getProfileUrl(profile: Profile) {
@@ -1031,6 +1084,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  templateHint: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
     marginBottom: spacing.sm,
   },
   typeChip: {

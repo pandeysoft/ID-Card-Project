@@ -67,7 +67,7 @@ create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   organization_id uuid references public.organizations(id) on delete set null,
-  type text not null check (type in ('personal', 'professional', 'acquaintance', 'business')),
+  type text not null check (type in ('personal', 'professional', 'acquaintance', 'business', 'creator', 'event')),
   public_slug text not null unique,
   name text not null,
   headline text,

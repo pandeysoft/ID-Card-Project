@@ -6,6 +6,7 @@ import { getAvatarPublicUrl, uploadProfileAvatar } from '../services/avatarServi
 import { initializeUserProfiles } from '../services/bootstrapService';
 import { getProfileLinks, replaceProfileLinks } from '../services/profileLinkService';
 import { createProfile, deleteProfile, getProfiles, publishPublicProfile, updateProfile } from '../services/profileService';
+import { getProfileTemplate, profileLabels } from '../lib/profileTemplates';
 import type { Profile, ProfileType } from '../types';
 import type { EditProfileForm } from '../screens/EditProfileScreen';
 
@@ -15,6 +16,11 @@ export type CreateManagedProfileForm = {
   company: string;
   bio: string;
   type: ProfileType;
+  links: Array<{
+    label: string;
+    value: string;
+    isVisible: boolean;
+  }>;
 };
 
 type ProfileContextValue = {
@@ -161,10 +167,23 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   async function createManagedProfile(form: CreateManagedProfileForm) {
     const now = new Date().toISOString();
+    const template = getProfileTemplate(form.type);
     const profileId = `profile_${Date.now()}`;
     const trimmedName = form.displayName.trim() || 'New Profile';
-    const trimmedTitle = form.title.trim() || `${profileLabels[form.type]} Profile`;
+    const trimmedTitle = form.title.trim() || template.defaultHeadline;
     const trimmedCompany = form.company.trim();
+    const links = form.links
+      .filter((link) => link.label.trim() && link.value.trim())
+      .map((link, index) => ({
+        id: `link_${profileId}_${index}`,
+        profileId,
+        label: link.label.trim(),
+        url: link.value.trim(),
+        order: index,
+        isVisible: link.isVisible,
+        createdAt: now,
+        updatedAt: now,
+      }));
     const newProfile: Profile = {
       id: profileId,
       userId: user?.id ?? 'local_demo_user',
@@ -173,9 +192,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       name: trimmedName,
       headline: trimmedTitle,
       company: trimmedCompany || undefined,
-      bio: form.bio.trim(),
-      links: [],
-      isPublic: true,
+      bio: form.bio.trim() || template.defaultBio,
+      links,
+      isPublic: template.defaultIsPublic,
       createdAt: now,
       updatedAt: now,
     };
@@ -195,11 +214,24 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       headline: newProfile.headline,
       company: newProfile.company,
       bio: newProfile.bio,
-      isPublic: true,
+      isPublic: newProfile.isPublic,
     });
 
+    const createdLinks = await replaceProfileLinks(
+      createdProfile.id,
+      user.id,
+      links.map((link) => ({
+        label: link.label,
+        url: link.url,
+        order: link.order,
+        isVisible: link.isVisible,
+      })),
+    );
+
     setProfiles((currentProfiles) =>
-      currentProfiles.map((profile) => (profile.id === newProfile.id ? { ...createdProfile, links: [] } : profile)),
+      currentProfiles.map((profile) =>
+        profile.id === newProfile.id ? { ...createdProfile, links: createdLinks } : profile,
+      ),
     );
     setActiveProfileId(createdProfile.id);
 
@@ -262,13 +294,6 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     </ProfileContext.Provider>
   );
 }
-
-const profileLabels: Record<ProfileType, string> = {
-  personal: 'Personal',
-  professional: 'Professional',
-  acquaintance: 'Acquaintance',
-  business: 'Business',
-};
 
 export function useProfiles() {
   const value = useContext(ProfileContext);

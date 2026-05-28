@@ -267,7 +267,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
-          type: 'personal' | 'professional' | 'acquaintance' | 'business';
+          type: ProfileType;
           public_slug: string;
           name: string;
           headline: string | null;
@@ -283,7 +283,7 @@ export type Database = {
         };
         Insert: {
           user_id: string;
-          type: 'personal' | 'professional' | 'acquaintance' | 'business';
+          type: ProfileType;
           public_slug: string;
           name: string;
           headline?: string | null;
@@ -296,7 +296,7 @@ export type Database = {
           is_public?: boolean;
         };
         Update: {
-          type?: 'personal' | 'professional' | 'acquaintance' | 'business';
+          type?: ProfileType;
           public_slug?: string;
           name?: string;
           headline?: string | null;

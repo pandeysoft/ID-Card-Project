@@ -4,7 +4,9 @@ export type ProfileType =
   | "personal"
   | "professional"
   | "acquaintance"
-  | "business";
+  | "business"
+  | "creator"
+  | "event";
 
 export type AccountPlan = "free" | "plus" | "business" | "enterprise";
 
