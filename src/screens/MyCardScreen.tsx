@@ -7,12 +7,13 @@ import { ProfileQrCode } from '../components/ProfileQrCode';
 import { useProfiles } from '../contexts';
 import { mockBusinessProfile } from '../lib/mockData';
 import { getProfileTemplate, profileLabels, profileTemplates } from '../lib/profileTemplates';
+import { buildPublicProfilePublishedData } from '../services/profileService';
 import { generateVCardFromProfile, shareVCardFile } from '../services/vcardService';
 import { spacing } from '../theme';
 import type { Profile, ProfileType } from '../types';
 import type { RootStackParamList } from '../types/navigation';
 
-type CardSide = 'profile' | 'qr';
+type CardSide = 'profile' | 'qr' | 'preview';
 type CreateProfileForm = {
   displayName: string;
   title: string;
@@ -75,18 +76,22 @@ export function MyCardScreen() {
               onSelectProfile={selectProfile}
               onEdit={() => navigation.navigate('EditProfile', { profileId: activeProfile.id })}
               onFlip={() => setCardSide('qr')}
+              onPreview={() => setCardSide('preview')}
               managerOpen={managerOpen}
               onToggleManager={() => setManagerOpen((open) => !open)}
               onCreateProfile={createManagedProfile}
               onDeleteProfile={deleteManagedProfile}
               onSetVisibility={setProfileVisibility}
             />
-          ) : (
+          ) : cardSide === 'qr' ? (
             <QrBack
               profile={activeProfile}
               profileUrl={profileUrl}
               onFlip={() => setCardSide('profile')}
+              onPreview={() => setCardSide('preview')}
             />
+          ) : (
+            <PublicPreview profile={activeProfile} onBack={() => setCardSide('profile')} />
           )}
         </View>
       </ScrollView>
@@ -104,6 +109,7 @@ function ProfileFront({
   onSelectProfile,
   onEdit,
   onFlip,
+  onPreview,
   managerOpen,
   onToggleManager,
   onCreateProfile,
@@ -119,6 +125,7 @@ function ProfileFront({
   onSelectProfile: (profileId: string) => void;
   onEdit: () => void;
   onFlip: () => void;
+  onPreview: () => void;
   managerOpen: boolean;
   onToggleManager: () => void;
   onCreateProfile: (form: CreateProfileForm) => Promise<void>;
@@ -178,6 +185,10 @@ function ProfileFront({
       />
 
       <VisibilityControl profile={profile} onSetVisibility={onSetVisibility} />
+
+      <Pressable onPress={onPreview} style={({ pressed }) => [styles.previewButton, pressed && styles.pressed]}>
+        <Text style={styles.previewButtonText}>Preview Public Profile</Text>
+      </Pressable>
 
       <ProfileManager
         activeProfileId={activeProfileId}
@@ -466,7 +477,17 @@ function ProfileManager({
   );
 }
 
-function QrBack({ profile, profileUrl, onFlip }: { profile: Profile; profileUrl: string; onFlip: () => void }) {
+function QrBack({
+  profile,
+  profileUrl,
+  onFlip,
+  onPreview,
+}: {
+  profile: Profile;
+  profileUrl: string;
+  onFlip: () => void;
+  onPreview: () => void;
+}) {
   const [sharingVCard, setSharingVCard] = useState(false);
   const [vcardError, setVCardError] = useState<string | null>(null);
 
@@ -527,6 +548,56 @@ function QrBack({ profile, profileUrl, onFlip }: { profile: Profile; profileUrl:
       <Pressable onPress={onFlip} style={({ pressed }) => [styles.flipAction, pressed && styles.pressed]}>
         <Text style={styles.flipActionText}>Flip to Profile</Text>
       </Pressable>
+      <Pressable onPress={onPreview} style={({ pressed }) => [styles.flipAction, pressed && styles.pressed]}>
+        <Text style={styles.flipActionText}>Preview Public Profile</Text>
+      </Pressable>
+    </>
+  );
+}
+
+function PublicPreview({ profile, onBack }: { profile: Profile; onBack: () => void }) {
+  const publishedData = buildPublicProfilePublishedData(profile);
+  const publicLinks = publishedData.links ?? [];
+
+  return (
+    <>
+      <View style={styles.softOrbTop} />
+      <Pressable onPress={onBack} style={({ pressed }) => [styles.backPill, pressed && styles.pressed]}>
+        <ChevronIcon direction="left" />
+        <Text style={styles.backPillText}>My Card</Text>
+      </Pressable>
+
+      <Text style={styles.previewHeading}>Public Preview</Text>
+      {!profile.isPublic ? (
+        <View style={styles.previewEmpty}>
+          <Text style={styles.previewEmptyTitle}>Profile unavailable</Text>
+          <Text style={styles.previewEmptyCopy}>This profile is private, so QR scans will not show public details.</Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.avatar}>
+            {profile.avatarUrl ? (
+              <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{getInitials(profile.name)}</Text>
+            )}
+          </View>
+          <Text style={styles.name}>{profile.name}</Text>
+          <Text style={styles.title}>{profile.company ? `${profile.headline} at ${profile.company}` : profile.headline}</Text>
+          <Text style={styles.bio}>{profile.bio}</Text>
+
+          <View style={styles.previewLinks}>
+            <Text style={styles.sectionTitle}>PUBLIC LINKS</Text>
+            {publicLinks.length > 0 ? (
+              publicLinks.map((link) => (
+                <InfoRow key={`${link.id}-${link.url}`} icon={getLinkIcon(link.label)} value={formatLinkValue(link.url)} action="external" />
+              ))
+            ) : (
+              <Text style={styles.previewEmptyCopy}>No public links.</Text>
+            )}
+          </View>
+        </>
+      )}
     </>
   );
 }
@@ -1057,6 +1128,20 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginTop: spacing.sm,
   },
+  previewButton: {
+    alignItems: 'center',
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    minHeight: 40,
+  },
+  previewButtonText: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '800',
+  },
   managerWrap: {
     marginTop: spacing.sm,
   },
@@ -1408,6 +1493,38 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: spacing.xs,
     textAlign: 'center',
+  },
+  previewHeading: {
+    color: '#0F172A',
+    fontSize: 24,
+    fontWeight: '800',
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  previewEmpty: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    borderRadius: 18,
+    borderWidth: 1,
+    marginTop: spacing.lg,
+    padding: spacing.md,
+  },
+  previewEmptyTitle: {
+    color: '#0F172A',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  previewEmptyCopy: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+  previewLinks: {
+    marginTop: spacing.lg,
   },
   qrFrame: {
     alignItems: 'center',
