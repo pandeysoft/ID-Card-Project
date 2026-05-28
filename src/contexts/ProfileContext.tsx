@@ -5,15 +5,25 @@ import { mockProfiles } from '../lib/mockData';
 import { getAvatarPublicUrl, uploadProfileAvatar } from '../services/avatarService';
 import { initializeUserProfiles } from '../services/bootstrapService';
 import { getProfileLinks, replaceProfileLinks } from '../services/profileLinkService';
-import { getProfiles, publishPublicProfile, updateProfile } from '../services/profileService';
-import type { Profile } from '../types';
+import { createProfile, deleteProfile, getProfiles, publishPublicProfile, updateProfile } from '../services/profileService';
+import type { Profile, ProfileType } from '../types';
 import type { EditProfileForm } from '../screens/EditProfileScreen';
+
+export type CreateManagedProfileForm = {
+  displayName: string;
+  title: string;
+  company: string;
+  bio: string;
+  type: ProfileType;
+};
 
 type ProfileContextValue = {
   activeProfile: Profile;
   activeProfileId: string;
   loading: boolean;
   profiles: Profile[];
+  createManagedProfile: (form: CreateManagedProfileForm) => Promise<void>;
+  deleteManagedProfile: (profileId: string) => Promise<void>;
   saveProfileEdits: (profileId: string, form: EditProfileForm) => Promise<void>;
   selectProfile: (profileId: string) => void;
 };
@@ -146,6 +156,73 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function createManagedProfile(form: CreateManagedProfileForm) {
+    const now = new Date().toISOString();
+    const profileId = `profile_${Date.now()}`;
+    const trimmedName = form.displayName.trim() || 'New Profile';
+    const trimmedTitle = form.title.trim() || `${profileLabels[form.type]} Profile`;
+    const trimmedCompany = form.company.trim();
+    const newProfile: Profile = {
+      id: profileId,
+      userId: user?.id ?? 'local_demo_user',
+      type: form.type,
+      publicSlug: buildProfileSlug(trimmedName, form.type),
+      name: trimmedName,
+      headline: trimmedTitle,
+      company: trimmedCompany || undefined,
+      bio: form.bio.trim(),
+      links: [],
+      isPublic: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setProfiles((currentProfiles) => [...currentProfiles, newProfile]);
+    setActiveProfileId(newProfile.id);
+
+    if (!user || isDevelopmentAuthBypass) {
+      return;
+    }
+
+    const createdProfile = await createProfile({
+      userId: user.id,
+      type: newProfile.type,
+      publicSlug: newProfile.publicSlug,
+      name: newProfile.name,
+      headline: newProfile.headline,
+      company: newProfile.company,
+      bio: newProfile.bio,
+      isPublic: true,
+    });
+
+    setProfiles((currentProfiles) =>
+      currentProfiles.map((profile) => (profile.id === newProfile.id ? { ...createdProfile, links: [] } : profile)),
+    );
+    setActiveProfileId(createdProfile.id);
+
+    try {
+      await publishPublicProfile(createdProfile.id);
+    } catch {
+      console.warn('CardIQ public profile publish failed after profile creation.');
+    }
+  }
+
+  async function deleteManagedProfile(profileId: string) {
+    if (profiles.length <= 1) {
+      throw new Error('Keep at least one profile.');
+    }
+
+    const nextProfileId = profiles.find((profile) => profile.id !== profileId)?.id ?? profiles[0].id;
+    setProfiles((currentProfiles) => currentProfiles.filter((profile) => profile.id !== profileId));
+    setActiveProfileId(nextProfileId);
+
+    if (!user || isDevelopmentAuthBypass) {
+      return;
+    }
+
+    await deleteProfile(profileId);
+  }
+
   return (
     <ProfileContext.Provider
       value={{
@@ -153,6 +230,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         activeProfileId,
         loading: profilesLoading || authLoading,
         profiles,
+        createManagedProfile,
+        deleteManagedProfile,
         saveProfileEdits,
         selectProfile: setActiveProfileId,
       }}
@@ -161,6 +240,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     </ProfileContext.Provider>
   );
 }
+
+const profileLabels: Record<ProfileType, string> = {
+  personal: 'Personal',
+  professional: 'Professional',
+  acquaintance: 'Acquaintance',
+  business: 'Business',
+};
 
 export function useProfiles() {
   const value = useContext(ProfileContext);
@@ -189,4 +275,14 @@ async function loadProfilesWithLinks(profiles: Profile[]): Promise<Profile[]> {
       links: await getProfileLinks(profile.id),
     })),
   );
+}
+
+function buildProfileSlug(name: string, type: ProfileType): string {
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return `${slug || 'cardiq-profile'}-${type}-${Date.now().toString(36)}`;
 }

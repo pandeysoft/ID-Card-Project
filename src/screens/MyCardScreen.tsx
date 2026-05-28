@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProfileQrCode } from '../components/ProfileQrCode';
 import { useProfiles } from '../contexts';
@@ -19,6 +19,13 @@ const profileLabels: Record<ProfileType, string> = {
 };
 
 type CardSide = 'profile' | 'qr';
+type CreateProfileForm = {
+  displayName: string;
+  title: string;
+  company: string;
+  bio: string;
+  type: ProfileType;
+};
 type RowIcon =
   | 'phone'
   | 'mail'
@@ -39,10 +46,13 @@ export function MyCardScreen() {
     activeProfileId,
     loading: profilesLoading,
     profiles,
+    createManagedProfile,
+    deleteManagedProfile,
     selectProfile: selectActiveProfile,
   } = useProfiles();
   const [cardSide, setCardSide] = useState<CardSide>('profile');
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [managerOpen, setManagerOpen] = useState(false);
   const profileUrl = getProfileUrl(activeProfile);
 
   function selectProfile(profileId: string) {
@@ -65,6 +75,10 @@ export function MyCardScreen() {
               onSelectProfile={selectProfile}
               onEdit={() => navigation.navigate('EditProfile', { profileId: activeProfile.id })}
               onFlip={() => setCardSide('qr')}
+              managerOpen={managerOpen}
+              onToggleManager={() => setManagerOpen((open) => !open)}
+              onCreateProfile={createManagedProfile}
+              onDeleteProfile={deleteManagedProfile}
             />
           ) : (
             <QrBack
@@ -89,6 +103,10 @@ function ProfileFront({
   onSelectProfile,
   onEdit,
   onFlip,
+  managerOpen,
+  onToggleManager,
+  onCreateProfile,
+  onDeleteProfile,
 }: {
   profile: Profile;
   profiles: Profile[];
@@ -99,6 +117,10 @@ function ProfileFront({
   onSelectProfile: (profileId: string) => void;
   onEdit: () => void;
   onFlip: () => void;
+  managerOpen: boolean;
+  onToggleManager: () => void;
+  onCreateProfile: (form: CreateProfileForm) => Promise<void>;
+  onDeleteProfile: (profileId: string) => Promise<void>;
 }) {
   const socials = getSocialRows(profile);
 
@@ -152,6 +174,15 @@ function ProfileFront({
         onSelect={onSelectProfile}
       />
 
+      <ProfileManager
+        activeProfileId={activeProfileId}
+        canDelete={profiles.length > 1}
+        open={managerOpen}
+        onToggle={onToggleManager}
+        onCreateProfile={onCreateProfile}
+        onDeleteProfile={onDeleteProfile}
+      />
+
       <View style={styles.divider} />
 
       <Section title="CONTACT">
@@ -166,6 +197,148 @@ function ProfileFront({
         ))}
       </Section>
     </>
+  );
+}
+
+function ProfileManager({
+  activeProfileId,
+  canDelete,
+  open,
+  onToggle,
+  onCreateProfile,
+  onDeleteProfile,
+}: {
+  activeProfileId: string;
+  canDelete: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onCreateProfile: (form: CreateProfileForm) => Promise<void>;
+  onDeleteProfile: (profileId: string) => Promise<void>;
+}) {
+  const [form, setForm] = useState<CreateProfileForm>({
+    displayName: '',
+    title: '',
+    company: '',
+    bio: '',
+    type: 'professional',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function updateField<Key extends keyof CreateProfileForm>(field: Key, value: CreateProfileForm[Key]) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleCreate() {
+    setSaving(true);
+    setError(null);
+
+    try {
+      await onCreateProfile(form);
+      setForm({ displayName: '', title: '', company: '', bio: '', type: 'professional' });
+      onToggle();
+    } catch (profileError) {
+      setError(profileError instanceof Error ? profileError.message : 'Unable to create profile.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleDelete() {
+    if (!canDelete) {
+      setError('Keep at least one profile.');
+      return;
+    }
+
+    Alert.alert('Delete profile?', 'This removes the active profile from CardIQ.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          onDeleteProfile(activeProfileId).catch((profileError: unknown) => {
+            setError(profileError instanceof Error ? profileError.message : 'Unable to delete profile.');
+          });
+        },
+      },
+    ]);
+  }
+
+  return (
+    <View style={styles.managerWrap}>
+      <Pressable onPress={onToggle} style={({ pressed }) => [styles.managerToggle, pressed && styles.pressed]}>
+        <Text style={styles.managerToggleText}>{open ? 'Close Profile Tools' : 'New Profile'}</Text>
+      </Pressable>
+
+      {open ? (
+        <View style={styles.managerPanel}>
+          <View style={styles.typeRow}>
+            {(Object.keys(profileLabels) as ProfileType[]).map((type) => (
+              <Pressable
+                key={type}
+                onPress={() => updateField('type', type)}
+                style={({ pressed }) => [
+                  styles.typeChip,
+                  form.type === type && styles.typeChipActive,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={[styles.typeChipText, form.type === type && styles.typeChipTextActive]}>
+                  {profileLabels[type]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <TextInput
+            autoCapitalize="words"
+            onChangeText={(value) => updateField('displayName', value)}
+            placeholder="Display name"
+            placeholderTextColor="#94A3B8"
+            style={styles.managerInput}
+            value={form.displayName}
+          />
+          <TextInput
+            onChangeText={(value) => updateField('title', value)}
+            placeholder="Title or headline"
+            placeholderTextColor="#94A3B8"
+            style={styles.managerInput}
+            value={form.title}
+          />
+          <TextInput
+            onChangeText={(value) => updateField('company', value)}
+            placeholder="Company"
+            placeholderTextColor="#94A3B8"
+            style={styles.managerInput}
+            value={form.company}
+          />
+          <TextInput
+            multiline
+            onChangeText={(value) => updateField('bio', value)}
+            placeholder="Bio"
+            placeholderTextColor="#94A3B8"
+            style={[styles.managerInput, styles.managerBioInput]}
+            value={form.bio}
+          />
+          {error ? <Text style={styles.managerError}>{error}</Text> : null}
+          <View style={styles.managerActions}>
+            <Pressable
+              disabled={saving}
+              onPress={handleCreate}
+              style={({ pressed }) => [styles.managerPrimary, pressed && styles.pressed, saving && styles.disabled]}
+            >
+              <Text style={styles.managerPrimaryText}>{saving ? 'Creating...' : 'Create'}</Text>
+            </Pressable>
+            <Pressable
+              disabled={!canDelete}
+              onPress={handleDelete}
+              style={({ pressed }) => [styles.managerDanger, pressed && styles.pressed, !canDelete && styles.disabled]}
+            >
+              <Text style={styles.managerDangerText}>Delete Active</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -685,6 +858,106 @@ const styles = StyleSheet.create({
     color: '#334155',
     fontSize: 13,
     fontWeight: '600',
+  },
+  managerWrap: {
+    marginTop: spacing.sm,
+  },
+  managerToggle: {
+    alignItems: 'center',
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  managerToggleText: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  managerPanel: {
+    borderColor: '#E2E8F0',
+    borderRadius: 15,
+    borderWidth: 1,
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  typeChip: {
+    borderColor: '#CBD5E1',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 7,
+  },
+  typeChipActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#6366F1',
+  },
+  typeChipText: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  typeChipTextActive: {
+    color: '#4F46E5',
+  },
+  managerInput: {
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    borderWidth: 1,
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    minHeight: 42,
+    paddingHorizontal: spacing.sm,
+  },
+  managerBioInput: {
+    minHeight: 74,
+    paddingTop: spacing.sm,
+    textAlignVertical: 'top',
+  },
+  managerError: {
+    color: '#DC2626',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+  },
+  managerActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  managerPrimary: {
+    alignItems: 'center',
+    backgroundColor: '#6366F1',
+    borderRadius: 12,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 42,
+  },
+  managerPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  managerDanger: {
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 42,
+  },
+  managerDangerText: {
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '800',
   },
   divider: {
     backgroundColor: '#E2E8F0',
