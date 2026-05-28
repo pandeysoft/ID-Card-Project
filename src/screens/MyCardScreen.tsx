@@ -49,6 +49,7 @@ export function MyCardScreen() {
     createManagedProfile,
     deleteManagedProfile,
     selectProfile: selectActiveProfile,
+    setProfileVisibility,
   } = useProfiles();
   const [cardSide, setCardSide] = useState<CardSide>('profile');
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -79,6 +80,7 @@ export function MyCardScreen() {
               onToggleManager={() => setManagerOpen((open) => !open)}
               onCreateProfile={createManagedProfile}
               onDeleteProfile={deleteManagedProfile}
+              onSetVisibility={setProfileVisibility}
             />
           ) : (
             <QrBack
@@ -107,6 +109,7 @@ function ProfileFront({
   onToggleManager,
   onCreateProfile,
   onDeleteProfile,
+  onSetVisibility,
 }: {
   profile: Profile;
   profiles: Profile[];
@@ -121,6 +124,7 @@ function ProfileFront({
   onToggleManager: () => void;
   onCreateProfile: (form: CreateProfileForm) => Promise<void>;
   onDeleteProfile: (profileId: string) => Promise<void>;
+  onSetVisibility: (profileId: string, isPublic: boolean) => Promise<void>;
 }) {
   const socials = getSocialRows(profile);
 
@@ -174,6 +178,8 @@ function ProfileFront({
         onSelect={onSelectProfile}
       />
 
+      <VisibilityControl profile={profile} onSetVisibility={onSetVisibility} />
+
       <ProfileManager
         activeProfileId={activeProfileId}
         canDelete={profiles.length > 1}
@@ -197,6 +203,79 @@ function ProfileFront({
         ))}
       </Section>
     </>
+  );
+}
+
+function VisibilityControl({
+  profile,
+  onSetVisibility,
+}: {
+  profile: Profile;
+  onSetVisibility: (profileId: string, isPublic: boolean) => Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function updateVisibility(isPublic: boolean) {
+    if (profile.isPublic === isPublic || saving) {
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await onSetVisibility(profile.id, isPublic);
+    } catch (visibilityError) {
+      setError(visibilityError instanceof Error ? visibilityError.message : 'Unable to update visibility.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <View style={styles.visibilityWrap}>
+      <View style={styles.visibilityHeader}>
+        <Text style={styles.visibilityLabel}>Visibility</Text>
+        <Text style={[styles.visibilityState, profile.isPublic ? styles.publicState : styles.privateState]}>
+          {profile.isPublic ? 'Public' : 'Private'}
+        </Text>
+      </View>
+      <View style={styles.visibilityActions}>
+        <Pressable
+          disabled={saving}
+          onPress={() => updateVisibility(true)}
+          style={({ pressed }) => [
+            styles.visibilityOption,
+            profile.isPublic && styles.visibilityOptionActive,
+            pressed && styles.pressed,
+            saving && styles.disabled,
+          ]}
+        >
+          <Text style={[styles.visibilityOptionText, profile.isPublic && styles.visibilityOptionTextActive]}>
+            Public
+          </Text>
+        </Pressable>
+        <Pressable
+          disabled={saving}
+          onPress={() => updateVisibility(false)}
+          style={({ pressed }) => [
+            styles.visibilityOption,
+            !profile.isPublic && styles.visibilityOptionActive,
+            pressed && styles.pressed,
+            saving && styles.disabled,
+          ]}
+        >
+          <Text style={[styles.visibilityOptionText, !profile.isPublic && styles.visibilityOptionTextActive]}>
+            Private
+          </Text>
+        </Pressable>
+      </View>
+      {!profile.isPublic ? (
+        <Text style={styles.visibilityNote}>QR scans will show this profile as unavailable.</Text>
+      ) : null}
+      {error ? <Text style={styles.managerError}>{error}</Text> : null}
+    </View>
   );
 }
 
@@ -858,6 +937,72 @@ const styles = StyleSheet.create({
     color: '#334155',
     fontSize: 13,
     fontWeight: '600',
+  },
+  visibilityWrap: {
+    borderColor: '#E2E8F0',
+    borderRadius: 15,
+    borderWidth: 1,
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+  },
+  visibilityHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  visibilityLabel: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  visibilityState: {
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: '800',
+    overflow: 'hidden',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+  },
+  publicState: {
+    backgroundColor: '#ECFDF5',
+    color: '#047857',
+  },
+  privateState: {
+    backgroundColor: '#FEF2F2',
+    color: '#DC2626',
+  },
+  visibilityActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  visibilityOption: {
+    alignItems: 'center',
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 38,
+  },
+  visibilityOptionActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#6366F1',
+  },
+  visibilityOptionText: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  visibilityOptionTextActive: {
+    color: '#4F46E5',
+  },
+  visibilityNote: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+    marginTop: spacing.sm,
   },
   managerWrap: {
     marginTop: spacing.sm,

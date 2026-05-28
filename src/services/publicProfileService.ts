@@ -43,6 +43,7 @@ export async function getPublicProfileBySlug(
     .from('public_profiles')
     .select('*')
     .eq('public_slug', publicSlug)
+    .eq('is_public', true)
     .returns<PublicProfileRow[]>()
     .maybeSingle();
 

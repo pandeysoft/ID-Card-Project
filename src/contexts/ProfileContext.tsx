@@ -26,6 +26,7 @@ type ProfileContextValue = {
   deleteManagedProfile: (profileId: string) => Promise<void>;
   saveProfileEdits: (profileId: string, form: EditProfileForm) => Promise<void>;
   selectProfile: (profileId: string) => void;
+  setProfileVisibility: (profileId: string, isPublic: boolean) => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileContextValue | undefined>(undefined);
@@ -223,6 +224,24 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     await deleteProfile(profileId);
   }
 
+  async function setProfileVisibility(profileId: string, isPublic: boolean) {
+    setProfiles((currentProfiles) =>
+      currentProfiles.map((profile) => (profile.id === profileId ? { ...profile, isPublic } : profile)),
+    );
+
+    if (!user || isDevelopmentAuthBypass) {
+      return;
+    }
+
+    await updateProfile(profileId, { isPublic });
+
+    try {
+      await publishPublicProfile(profileId);
+    } catch {
+      console.warn('CardIQ public profile publish failed after visibility change.');
+    }
+  }
+
   return (
     <ProfileContext.Provider
       value={{
@@ -234,6 +253,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         deleteManagedProfile,
         saveProfileEdits,
         selectProfile: setActiveProfileId,
+        setProfileVisibility,
       }}
     >
       {children}
