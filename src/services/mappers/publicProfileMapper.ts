@@ -1,11 +1,10 @@
 import type {
+  BusinessProfile,
+  ProfileLink,
+  ProfileType,
   PublicProfile,
-} from '../../types';
+} from '../../types/cardiq';
 import type { Database, PublicProfilePublishedData } from '../../types/database';
-import type {
-  CreatePublicProfileInput,
-  UpdatePublicProfileInput,
-} from '../publicProfileService';
 
 export type { PublicProfilePublishedData };
 
@@ -15,6 +14,24 @@ export type PublicSafeProfileRow =
 
 type PublicProfileInsert = Database['public']['Tables']['public_profiles']['Insert'];
 type PublicProfileUpdate = Database['public']['Tables']['public_profiles']['Update'];
+
+type PublicProfileInput = {
+  profileId: string;
+  userId: string;
+  publicSlug: string;
+  name: string;
+  headline: string;
+  bio: string;
+  avatarUrl?: string;
+  type: ProfileType;
+  links?: readonly ProfileLink[];
+  business?: BusinessProfile;
+  isPublic?: boolean;
+};
+
+type PublicProfileUpdateInput = Partial<
+  Omit<PublicProfileInput, 'profileId' | 'userId' | 'publicSlug'>
+>;
 
 export function mapPublicProfileRowToPublicProfile(
   row: PublicProfileRow,
@@ -51,7 +68,7 @@ export function mapPublicSafeProfileRowToPublicProfile(
 }
 
 export function mapPublicProfileToInsert(
-  publicProfile: CreatePublicProfileInput,
+  publicProfile: PublicProfileInput,
 ): PublicProfileInsert {
   return {
     profile_id: publicProfile.profileId,
@@ -71,7 +88,7 @@ export function mapPublicProfileToInsert(
 }
 
 export function mapPublicProfileUpdatesToRow(
-  updates: UpdatePublicProfileInput,
+  updates: PublicProfileUpdateInput,
 ): PublicProfileUpdate {
   return {
     ...(updates.name !== undefined ? { name: updates.name } : {}),
