@@ -1,5 +1,6 @@
 import appConfig from '../../app.json';
 import { publicEnv } from '../config/env';
+import { listMyCompanies } from './companyService';
 import { listExchangeRequests } from './exchangeRequestService';
 import { getPublicProfileBySlug } from './publicProfileService';
 import { supabase } from './supabase';
@@ -40,6 +41,14 @@ export async function getDiagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
       .limit(1);
     return { ok: !error };
   });
+  const companyMemberships = await toCheck('Company membership service', async () => {
+    if (!session?.user?.id) {
+      return { ok: true };
+    }
+
+    await listMyCompanies(session.user.id);
+    return { ok: true };
+  });
   const contactExchangeRequests = await toCheck('Contact exchange requests table', async () => {
     const { error } = await supabase
       .from('contact_exchange_requests')
@@ -76,6 +85,7 @@ export async function getDiagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
       publicProfileRpc,
       storageBucket,
       companies,
+      companyMemberships,
       contactExchangeRequests,
       contactExchangeService,
     ],

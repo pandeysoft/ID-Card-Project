@@ -74,6 +74,49 @@ export async function listMyCompanies(userId: string): Promise<Company[]> {
     .map(mapCompanyRowToCompany);
 }
 
+export async function inviteMember(
+  companyId: string,
+  userId: string,
+  role: CompanyRole,
+): Promise<CompanyMembership> {
+  const { data, error } = await supabase
+    .rpc('invite_company_member', {
+      p_company_id: companyId,
+      p_user_id: userId,
+      p_role: role,
+    })
+    .returns<CompanyMembershipRow[]>();
+
+  assertNoError(error, 'Unable to invite company member.');
+  const rows = Array.isArray(data) ? data : [];
+  const row = rows[0];
+  if (!row) {
+    throw new Error('Unable to invite company member.');
+  }
+
+  return mapCompanyMembershipRowToCompanyMembership(row);
+}
+
+export async function removeMember(companyId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .rpc('remove_company_member', {
+      p_company_id: companyId,
+      p_user_id: userId,
+    });
+
+  assertNoError(error, 'Unable to remove company member.');
+}
+
+export async function listCompanyMembers(companyId: string): Promise<CompanyMembership[]> {
+  const { data, error } = await supabase
+    .rpc('list_company_members', { p_company_id: companyId })
+    .returns<CompanyMembershipRow[]>();
+
+  assertNoError(error, 'Unable to load company members.');
+  const rows = Array.isArray(data) ? data : [];
+  return rows.map(mapCompanyMembershipRowToCompanyMembership);
+}
+
 export function mapCompanyRowToCompany(row: CompanyRow): Company {
   return {
     id: row.id,

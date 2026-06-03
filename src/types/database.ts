@@ -477,6 +477,27 @@ export type Database = {
           }
         >;
       };
+      invite_company_member: {
+        Args: {
+          p_company_id: string;
+          p_user_id: string;
+          p_role: CompanyRole;
+        };
+        Returns: Array<Database['public']['Tables']['company_memberships']['Row']>;
+      };
+      list_company_members: {
+        Args: {
+          p_company_id: string;
+        };
+        Returns: Array<Database['public']['Tables']['company_memberships']['Row']>;
+      };
+      remove_company_member: {
+        Args: {
+          p_company_id: string;
+          p_user_id: string;
+        };
+        Returns: void;
+      };
       get_public_profile_by_slug: {
         Args: {
           profile_slug: string;
