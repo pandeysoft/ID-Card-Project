@@ -37,6 +37,11 @@ const sections = [
     message: 'These controls are being prepared for beta/public launch.',
     status: 'Beta unavailable / Coming soon',
   },
+  {
+    title: 'Legal & Support',
+    rows: ['Privacy Policy', 'Terms of Service', 'Contact Support', 'Report a Problem'],
+    status: 'Beta placeholder / Coming soon',
+  },
 ];
 
 export function SettingsScreen() {
