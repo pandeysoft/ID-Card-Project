@@ -7,10 +7,16 @@ type ExchangeRequestInsert = Database['public']['Tables']['contact_exchange_requ
 
 export type CreateExchangeRequestInput = {
   requesterUserId: string;
-  recipientUserId: string;
   requesterProfileId: string;
-  recipientProfileId: string;
-};
+} & (
+  | {
+      recipientUserId: string;
+      recipientProfileId: string;
+    }
+  | {
+      recipientPublicSlug: string;
+    }
+);
 
 function assertNoError(error: Error | null, fallbackMessage: string): void {
   if (error) {
@@ -21,6 +27,28 @@ function assertNoError(error: Error | null, fallbackMessage: string): void {
 export async function createExchangeRequest(
   request: CreateExchangeRequestInput,
 ): Promise<ContactExchangeRequest> {
+  if ('recipientPublicSlug' in request) {
+    const { data, error } = await supabase
+      .rpc('create_contact_exchange_request_by_slug', {
+        p_recipient_public_slug: request.recipientPublicSlug,
+        p_requester_profile_id: request.requesterProfileId,
+      })
+      .returns<ExchangeRequestRow[]>();
+
+    assertNoError(error, 'Unable to create contact exchange request.');
+    const rows = Array.isArray(data)
+      ? (data as ExchangeRequestRow[])
+      : data
+        ? [data as unknown as ExchangeRequestRow]
+        : [];
+    const row = rows[0];
+    if (!row) {
+      throw new Error('Unable to create contact exchange request.');
+    }
+
+    return mapExchangeRequestRow(row);
+  }
+
   const { data, error } = await supabase
     .from('contact_exchange_requests')
     .insert(mapExchangeRequestToInsert(request))
@@ -84,6 +112,10 @@ async function respondToExchangeRequest(
 function mapExchangeRequestToInsert(
   request: CreateExchangeRequestInput,
 ): ExchangeRequestInsert {
+  if ('recipientPublicSlug' in request) {
+    throw new Error('Recipient ids are required for direct exchange request inserts.');
+  }
+
   return {
     requester_user_id: request.requesterUserId,
     recipient_user_id: request.recipientUserId,

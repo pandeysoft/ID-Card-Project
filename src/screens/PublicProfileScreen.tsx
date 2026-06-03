@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts';
 import { mockProfiles } from '../lib/mockData';
 import { createContactFromProfile } from '../services/contactService';
+import { createExchangeRequest } from '../services/exchangeRequestService';
+import { getProfiles } from '../services/profileService';
 import { getPublicProfileBySlug } from '../services/publicProfileService';
 import { generateVCardFromProfile, shareVCardFile } from '../services/vcardService';
 import { colors, spacing, typography } from '../theme';
@@ -28,6 +30,8 @@ export function PublicProfileScreen({ onClose, route }: PublicProfileScreenProps
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sharingVCard, setSharingVCard] = useState(false);
+  const [requestingExchange, setRequestingExchange] = useState(false);
+  const [exchangeStatus, setExchangeStatus] = useState<'sent' | 'pending' | 'failed' | null>(null);
   const [savedContact, setSavedContact] = useState<SavedContact | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const displayProfile = useMemo(() => {
@@ -37,6 +41,7 @@ export function PublicProfileScreen({ onClose, route }: PublicProfileScreenProps
 
     return devPreview ? defaultProfile : null;
   }, [devPreview, loadedProfile, publicSlug]);
+  const canRequestExchange = Boolean(user && !isDevelopmentAuthBypass && publicSlug && displayProfile && !loadError);
 
   useEffect(() => {
     let mounted = true;
@@ -117,6 +122,40 @@ export function PublicProfileScreen({ onClose, route }: PublicProfileScreenProps
     }
   }
 
+  async function handleRequestExchange() {
+    if (!user || !publicSlug || isDevelopmentAuthBypass) {
+      return;
+    }
+
+    setRequestingExchange(true);
+    setExchangeStatus(null);
+    setErrorMessage(null);
+
+    try {
+      const requesterProfile = (await getProfiles(user.id))[0];
+
+      if (!requesterProfile) {
+        throw new Error('Create a profile before requesting contact exchange.');
+      }
+
+      await createExchangeRequest({
+        requesterUserId: user.id,
+        requesterProfileId: requesterProfile.id,
+        recipientPublicSlug: publicSlug,
+      });
+      setExchangeStatus('sent');
+    } catch (error) {
+      if (isDuplicateExchangeRequestError(error)) {
+        setExchangeStatus('pending');
+      } else {
+        setExchangeStatus('failed');
+        setErrorMessage(error instanceof Error ? error.message : 'Failed to send contact exchange request.');
+      }
+    } finally {
+      setRequestingExchange(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -160,10 +199,26 @@ export function PublicProfileScreen({ onClose, route }: PublicProfileScreenProps
 
         {savedContact ? <Text style={styles.success}>Saved {savedContact.snapshot.name} locally.</Text> : null}
         {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
+        {exchangeStatus ? <Text style={getExchangeStatusStyle(exchangeStatus)}>{getExchangeStatusText(exchangeStatus)}</Text> : null}
 
         <Pressable disabled={saving} onPress={handleSaveContact} style={({ pressed }) => [styles.saveButton, pressed ? styles.pressed : null, saving ? styles.disabled : null]}>
           <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Contact'}</Text>
         </Pressable>
+        {canRequestExchange ? (
+          <Pressable
+            disabled={requestingExchange || exchangeStatus === 'sent' || exchangeStatus === 'pending'}
+            onPress={handleRequestExchange}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              pressed ? styles.pressed : null,
+              requestingExchange || exchangeStatus === 'sent' || exchangeStatus === 'pending' ? styles.disabled : null,
+            ]}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {requestingExchange ? 'Sending...' : 'Request Contact Exchange'}
+            </Text>
+          </Pressable>
+        ) : null}
         <Pressable disabled={sharingVCard} onPress={handleShareVCard} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null, sharingVCard ? styles.disabled : null]}>
           <Text style={styles.secondaryButtonText}>{sharingVCard ? 'Preparing vCard...' : 'Save vCard'}</Text>
         </Pressable>
@@ -203,6 +258,25 @@ function getTitle(profile: Profile) {
 
 function formatLink(link: ProfileLink) {
   return link.url.replace('mailto:', '').replace('https://', '').replace('http://', '').replace('www.', '');
+}
+
+function isDuplicateExchangeRequestError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return message.includes('duplicate') || message.includes('contact_exchange_requests_pending_unique_idx');
+}
+
+function getExchangeStatusText(status: 'sent' | 'pending' | 'failed') {
+  if (status === 'sent') {
+    return 'Request sent.';
+  }
+  if (status === 'pending') {
+    return 'Already pending.';
+  }
+  return 'Failed to send.';
+}
+
+function getExchangeStatusStyle(status: 'sent' | 'pending' | 'failed') {
+  return status === 'failed' ? styles.error : styles.success;
 }
 
 function createLocalSavedContact(profile: Profile): SavedContact {

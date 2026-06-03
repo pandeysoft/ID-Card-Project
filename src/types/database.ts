@@ -402,6 +402,13 @@ export type Database = {
       };
     };
     Functions: {
+      create_contact_exchange_request_by_slug: {
+        Args: {
+          p_recipient_public_slug: string;
+          p_requester_profile_id: string;
+        };
+        Returns: Array<Database['public']['Tables']['contact_exchange_requests']['Row']>;
+      };
       get_public_profile_by_slug: {
         Args: {
           profile_slug: string;
