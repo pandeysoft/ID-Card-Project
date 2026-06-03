@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import {
@@ -9,8 +10,33 @@ import {
 } from '../services/diagnosticsService';
 import { colors, spacing, typography } from '../theme';
 
+const checklistStorageKey = 'cardiq_beta_smoke_checklist';
+const checklistItems = [
+  'Auth sign-in works',
+  'Session persists after restart',
+  'Onboarding persists',
+  'Create profile',
+  'Edit profile',
+  'Toggle public/private',
+  'Hide/show profile link',
+  'Public preview matches expected',
+  'Avatar upload works',
+  'Public QR opens public profile',
+  'Private QR shows unavailable',
+  'Save public profile as contact',
+  'Contact links persist',
+  'Create lead',
+  'Update lead status',
+  'OCR shows coming soon',
+] as const;
+
+type ChecklistItem = (typeof checklistItems)[number];
+type ChecklistState = Partial<Record<ChecklistItem, DiagnosticStatus>>;
+const checklistStatuses: DiagnosticStatus[] = ['PASS', 'FAIL', 'UNKNOWN'];
+
 export function DiagnosticsScreen() {
   const [snapshot, setSnapshot] = useState<DiagnosticsSnapshot | null>(null);
+  const [checklist, setChecklist] = useState<ChecklistState>({});
   const [loading, setLoading] = useState(false);
 
   async function refresh() {
@@ -28,7 +54,33 @@ export function DiagnosticsScreen() {
 
   useEffect(() => {
     void refresh();
+    void loadChecklist();
   }, []);
+
+  async function loadChecklist() {
+    if (!__DEV__) {
+      return;
+    }
+
+    try {
+      const value = await SecureStore.getItemAsync(checklistStorageKey);
+      const parsed = value ? JSON.parse(value) : {};
+      setChecklist(isChecklistState(parsed) ? parsed : {});
+    } catch {
+      setChecklist({});
+    }
+  }
+
+  async function setChecklistStatus(item: ChecklistItem, status: DiagnosticStatus) {
+    const next = { ...checklist, [item]: status };
+    setChecklist(next);
+
+    try {
+      await SecureStore.setItemAsync(checklistStorageKey, JSON.stringify(next));
+    } catch {
+      // Local persistence is best-effort for dev diagnostics.
+    }
+  }
 
   if (!__DEV__) {
     return (
@@ -53,6 +105,18 @@ export function DiagnosticsScreen() {
             <StatusRow key={check.label} label={check.label} status={check.status} value={check.value} />
           ))}
           {!snapshot ? <StatusRow label="Diagnostics loaded" status="UNKNOWN" value={loading ? 'Loading' : undefined} /> : null}
+        </View>
+
+        <Text style={styles.sectionTitle}>Beta Smoke Checklist</Text>
+        <View style={styles.panel}>
+          {checklistItems.map((item) => (
+            <ChecklistRow
+              key={item}
+              label={item}
+              status={checklist[item] ?? 'UNKNOWN'}
+              onChange={(status) => void setChecklistStatus(item, status)}
+            />
+          ))}
         </View>
 
         <Pressable style={({ pressed }) => [styles.button, pressed ? styles.pressed : null]} onPress={refresh}>
@@ -81,6 +145,49 @@ function StatusRow({ label, status, value }: DiagnosticCheck) {
         {value ? <Text style={styles.value}>{value}</Text> : null}
       </View>
     </View>
+  );
+}
+
+function ChecklistRow({
+  label,
+  onChange,
+  status,
+}: {
+  label: string;
+  onChange: (status: DiagnosticStatus) => void;
+  status: DiagnosticStatus;
+}) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.checklistLabel}>{label}</Text>
+      <View style={styles.segment}>
+        {checklistStatuses.map((option) => (
+          <Pressable
+            key={option}
+            onPress={() => onChange(option)}
+            style={({ pressed }) => [
+              styles.segmentButton,
+              status === option ? styles.segmentButtonActive : null,
+              pressed ? styles.pressed : null,
+            ]}
+          >
+            <Text style={[styles.segmentText, status === option ? getStatusStyle(option) : null]}>
+              {option}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function isChecklistState(value: unknown): value is ChecklistState {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  return Object.values(value).every((status) =>
+    checklistStatuses.includes(status as DiagnosticStatus),
   );
 }
 
@@ -128,6 +235,40 @@ const styles = StyleSheet.create({
   },
   status: {
     fontSize: typography.sizes.body,
+    fontWeight: '800',
+  },
+  sectionTitle: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.caption,
+    fontWeight: '800',
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+  },
+  checklistLabel: {
+    color: colors.text,
+    fontSize: typography.sizes.small,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+  },
+  segment: {
+    flexDirection: 'row',
+  },
+  segmentButton: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    flex: 1,
+    marginRight: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  segmentButtonActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  segmentText: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.caption,
     fontWeight: '800',
   },
   pass: {
