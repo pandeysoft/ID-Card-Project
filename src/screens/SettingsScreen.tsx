@@ -148,6 +148,7 @@ export function SettingsScreen() {
                   <SettingsRow label="Preview Leads" onPress={() => navigation.navigate('LeadsPreview')} />
                   <SettingsRow label="Preview Networking" onPress={() => navigation.navigate('NetworkingPreview')} />
                   <SettingsRow label="Preview Onboarding" onPress={() => navigation.navigate('OnboardingPreview')} />
+                  <SettingsRow label="Diagnostics" onPress={() => navigation.navigate('Diagnostics')} />
                 </>
               ) : null}
             </View>

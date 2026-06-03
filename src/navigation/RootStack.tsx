@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ContactDetailScreen } from '../screens/ContactDetailScreen';
+import { DiagnosticsScreen } from '../screens/DiagnosticsScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { LeadCaptureScreen } from '../screens/LeadCaptureScreen';
 import { LeadDetailScreen } from '../screens/LeadDetailScreen';
@@ -24,6 +25,7 @@ export function RootStack() {
       <Stack.Screen name="LeadDetail" component={LeadDetailScreen} />
       <Stack.Screen name="NetworkingPreview" component={NetworkingScreen} />
       <Stack.Screen name="OnboardingPreview" component={OnboardingScreen} />
+      {__DEV__ ? <Stack.Screen name="Diagnostics" component={DiagnosticsScreen} /> : null}
     </Stack.Navigator>
   );
 }

@@ -15,6 +15,7 @@ export type RootStackParamList = {
   };
   NetworkingPreview: undefined;
   OnboardingPreview: undefined;
+  Diagnostics: undefined;
   PublicProfile:
     | {
         publicSlug?: string;
