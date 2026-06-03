@@ -31,6 +31,12 @@ const sections = [
     title: 'App Preferences',
     rows: ['Notifications', 'Appearance', 'Data and storage'],
   },
+  {
+    title: 'Account & Data',
+    rows: ['Export my data', 'Delete account'],
+    message: 'These controls are being prepared for beta/public launch.',
+    status: 'Beta unavailable / Coming soon',
+  },
 ];
 
 export function SettingsScreen() {
@@ -130,9 +136,15 @@ export function SettingsScreen() {
         {sections.map((section) => (
           <View key={section.title} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
+            {'message' in section ? <Text style={styles.sectionMessage}>{section.message}</Text> : null}
             <View style={styles.sectionCard}>
               {section.rows.map((row) => (
-                <SettingsRow key={row} label={row} />
+                <SettingsRow
+                  key={row}
+                  disabled={'status' in section}
+                  label={row}
+                  status={'status' in section ? section.status : undefined}
+                />
               ))}
               {section.title === 'Account' ? (
                 <SettingsRow
@@ -163,10 +175,12 @@ function SettingsRow({
   disabled = false,
   label,
   onPress,
+  status,
 }: {
   disabled?: boolean;
   label: string;
   onPress?: () => void;
+  status?: string;
 }) {
   return (
     <Pressable
@@ -177,7 +191,10 @@ function SettingsRow({
       <View style={styles.rowIcon}>
         <Text style={styles.rowIconText}>{label[0]}</Text>
       </View>
-      <Text style={styles.rowLabel}>{label}</Text>
+      <View style={styles.rowText}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        {status ? <Text style={styles.rowStatus}>{status}</Text> : null}
+      </View>
       <Text style={styles.chevron}>{'>'}</Text>
     </Pressable>
   );
@@ -299,6 +316,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     textTransform: 'uppercase',
   },
+  sectionMessage: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.small,
+    lineHeight: 20,
+    marginBottom: spacing.sm,
+  },
   sectionCard: {
     backgroundColor: colors.card,
     borderColor: colors.border,
@@ -337,9 +360,17 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     color: colors.text,
-    flex: 1,
     fontSize: typography.sizes.body,
     fontWeight: '700',
+  },
+  rowText: {
+    flex: 1,
+  },
+  rowStatus: {
+    color: colors.mutedText,
+    fontSize: typography.sizes.caption,
+    fontWeight: '700',
+    marginTop: spacing.xs,
   },
   chevron: {
     color: colors.mutedText,
