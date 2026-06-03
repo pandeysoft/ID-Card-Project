@@ -7,7 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test:privacy": "npx.cmd tsc -p tsconfig.privacy.json && node .privacy-test-build/tests/privacy-check.js"
+    "test:privacy": "npx.cmd tsc -p tsconfig.privacy.json && node .privacy-test-build/tests/privacy-check.js",
+    "verify:beta": "npx.cmd tsc --noEmit && npm run test:privacy"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.16.1",
