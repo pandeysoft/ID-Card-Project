@@ -123,6 +123,19 @@ create table if not exists public.contact_links (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.contact_exchange_requests (
+  id uuid primary key default gen_random_uuid(),
+  requester_user_id uuid not null references auth.users(id) on delete cascade,
+  recipient_user_id uuid not null references auth.users(id) on delete cascade,
+  requester_profile_id uuid not null references public.profiles(id) on delete cascade,
+  recipient_profile_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'declined', 'cancelled')),
+  created_at timestamptz not null default now(),
+  responded_at timestamptz,
+  check (requester_user_id <> recipient_user_id),
+  check (requester_profile_id <> recipient_profile_id)
+);
+
 create table if not exists public.leads (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -193,6 +206,12 @@ create index if not exists contacts_user_headline_lower_idx on public.contacts(u
 create index if not exists contacts_user_email_lower_idx on public.contacts(user_id, lower(email));
 create index if not exists contact_links_user_id_idx on public.contact_links(user_id);
 create index if not exists contact_links_contact_id_idx on public.contact_links(contact_id);
+create index if not exists contact_exchange_requests_requester_user_id_idx on public.contact_exchange_requests(requester_user_id);
+create index if not exists contact_exchange_requests_recipient_user_id_idx on public.contact_exchange_requests(recipient_user_id);
+create index if not exists contact_exchange_requests_status_idx on public.contact_exchange_requests(status);
+create unique index if not exists contact_exchange_requests_pending_unique_idx
+  on public.contact_exchange_requests(requester_user_id, recipient_user_id, requester_profile_id, recipient_profile_id)
+  where status = 'pending';
 create index if not exists leads_user_id_idx on public.leads(user_id);
 create index if not exists leads_organization_id_idx on public.leads(organization_id);
 create index if not exists leads_profile_id_idx on public.leads(profile_id);
@@ -248,6 +267,7 @@ alter table public.profiles enable row level security;
 alter table public.profile_links enable row level security;
 alter table public.contacts enable row level security;
 alter table public.contact_links enable row level security;
+alter table public.contact_exchange_requests enable row level security;
 alter table public.leads enable row level security;
 alter table public.public_profiles enable row level security;
 alter table public.subscriptions enable row level security;
@@ -302,6 +322,22 @@ drop policy if exists "contact_links_owner_all" on public.contact_links;
 create policy "contact_links_owner_all" on public.contact_links
   for all using (user_id = auth.uid())
   with check (user_id = auth.uid());
+
+drop policy if exists "contact_exchange_requests_participant_select" on public.contact_exchange_requests;
+create policy "contact_exchange_requests_participant_select" on public.contact_exchange_requests
+  for select using (requester_user_id = auth.uid() or recipient_user_id = auth.uid());
+
+drop policy if exists "contact_exchange_requests_requester_insert" on public.contact_exchange_requests;
+create policy "contact_exchange_requests_requester_insert" on public.contact_exchange_requests
+  for insert with check (requester_user_id = auth.uid());
+
+drop policy if exists "contact_exchange_requests_participant_update" on public.contact_exchange_requests;
+create policy "contact_exchange_requests_participant_update" on public.contact_exchange_requests
+  for update using (
+    status = 'pending'
+    and (requester_user_id = auth.uid() or recipient_user_id = auth.uid())
+  )
+  with check (requester_user_id = auth.uid() or recipient_user_id = auth.uid());
 
 drop policy if exists "leads_owner_all" on public.leads;
 create policy "leads_owner_all" on public.leads

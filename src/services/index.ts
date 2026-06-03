@@ -8,6 +8,7 @@ export * as businessCardOcrService from './businessCardOcrService';
 export * as profileService from './profileService';
 export * as profileLinkService from './profileLinkService';
 export * as contactService from './contactService';
+export * as exchangeRequestService from './exchangeRequestService';
 export * as healthService from './healthService';
 export * as leadService from './leadService';
 export * as networkingSessionService from './networkingSessionService';

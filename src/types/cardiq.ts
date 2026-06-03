@@ -23,6 +23,12 @@ export type LeadStatus =
   | "converted"
   | "lost";
 
+export type ContactExchangeStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "cancelled";
+
 export interface User {
   id: string;
   email: string;
@@ -192,6 +198,17 @@ export interface SavedContact {
   tags: readonly string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface ContactExchangeRequest {
+  id: string;
+  requesterUserId: string;
+  recipientUserId: string;
+  requesterProfileId: string;
+  recipientProfileId: string;
+  status: ContactExchangeStatus;
+  createdAt: Timestamp;
+  respondedAt?: Timestamp;
 }
 
 export interface Lead {

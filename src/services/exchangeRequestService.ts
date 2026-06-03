@@ -1,0 +1,107 @@
+import { supabase } from './supabase';
+import type { ContactExchangeRequest, ContactExchangeStatus } from '../types/cardiq';
+import type { Database } from '../types/database';
+
+type ExchangeRequestRow = Database['public']['Tables']['contact_exchange_requests']['Row'];
+type ExchangeRequestInsert = Database['public']['Tables']['contact_exchange_requests']['Insert'];
+
+export type CreateExchangeRequestInput = {
+  requesterUserId: string;
+  recipientUserId: string;
+  requesterProfileId: string;
+  recipientProfileId: string;
+};
+
+function assertNoError(error: Error | null, fallbackMessage: string): void {
+  if (error) {
+    throw new Error(error.message || fallbackMessage);
+  }
+}
+
+export async function createExchangeRequest(
+  request: CreateExchangeRequestInput,
+): Promise<ContactExchangeRequest> {
+  const { data, error } = await supabase
+    .from('contact_exchange_requests')
+    .insert(mapExchangeRequestToInsert(request))
+    .select('*')
+    .returns<ExchangeRequestRow[]>()
+    .single();
+
+  assertNoError(error, 'Unable to create contact exchange request.');
+  if (!data) {
+    throw new Error('Unable to create contact exchange request.');
+  }
+
+  return mapExchangeRequestRow(data);
+}
+
+export async function acceptExchangeRequest(
+  requestId: string,
+  recipientUserId: string,
+): Promise<ContactExchangeRequest> {
+  return respondToExchangeRequest(requestId, recipientUserId, 'recipient_user_id', 'accepted');
+}
+
+export async function declineExchangeRequest(
+  requestId: string,
+  recipientUserId: string,
+): Promise<ContactExchangeRequest> {
+  return respondToExchangeRequest(requestId, recipientUserId, 'recipient_user_id', 'declined');
+}
+
+export async function cancelExchangeRequest(
+  requestId: string,
+  requesterUserId: string,
+): Promise<ContactExchangeRequest> {
+  return respondToExchangeRequest(requestId, requesterUserId, 'requester_user_id', 'cancelled');
+}
+
+async function respondToExchangeRequest(
+  requestId: string,
+  userId: string,
+  userColumn: 'requester_user_id' | 'recipient_user_id',
+  status: Exclude<ContactExchangeStatus, 'pending'>,
+): Promise<ContactExchangeRequest> {
+  const { data, error } = await supabase
+    .from('contact_exchange_requests')
+    .update({ status, responded_at: new Date().toISOString() })
+    .eq('id', requestId)
+    .eq(userColumn, userId)
+    .eq('status', 'pending')
+    .select('*')
+    .returns<ExchangeRequestRow[]>()
+    .single();
+
+  assertNoError(error, 'Unable to update contact exchange request.');
+  if (!data) {
+    throw new Error('Unable to update contact exchange request.');
+  }
+
+  return mapExchangeRequestRow(data);
+}
+
+function mapExchangeRequestToInsert(
+  request: CreateExchangeRequestInput,
+): ExchangeRequestInsert {
+  return {
+    requester_user_id: request.requesterUserId,
+    recipient_user_id: request.recipientUserId,
+    requester_profile_id: request.requesterProfileId,
+    recipient_profile_id: request.recipientProfileId,
+    status: 'pending',
+  };
+}
+
+function mapExchangeRequestRow(row: ExchangeRequestRow): ContactExchangeRequest {
+  return {
+    id: row.id,
+    requesterUserId: row.requester_user_id,
+    recipientUserId: row.recipient_user_id,
+    requesterProfileId: row.requester_profile_id,
+    recipientProfileId: row.recipient_profile_id,
+    status: row.status,
+    createdAt: row.created_at,
+    respondedAt: row.responded_at ?? undefined,
+  };
+}

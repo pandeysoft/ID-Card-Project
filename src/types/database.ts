@@ -1,4 +1,4 @@
-import type { BusinessProfile, ProfileLink, ProfileType, ProfileVisibility } from './cardiq';
+import type { BusinessProfile, ContactExchangeStatus, ProfileLink, ProfileType, ProfileVisibility } from './cardiq';
 
 export type PublicProfilePublishedData = {
   type?: ProfileType;
@@ -169,6 +169,32 @@ export type Database = {
           label?: string;
           url?: string;
           display_order?: number;
+        };
+      };
+      contact_exchange_requests: {
+        Row: {
+          id: string;
+          requester_user_id: string;
+          recipient_user_id: string;
+          requester_profile_id: string;
+          recipient_profile_id: string;
+          status: ContactExchangeStatus;
+          created_at: string;
+          responded_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          requester_user_id: string;
+          recipient_user_id: string;
+          requester_profile_id: string;
+          recipient_profile_id: string;
+          status?: ContactExchangeStatus;
+          created_at?: string;
+          responded_at?: string | null;
+        };
+        Update: {
+          status?: ContactExchangeStatus;
+          responded_at?: string | null;
         };
       };
       leads: {

@@ -32,6 +32,13 @@ export async function getDiagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
     const { error } = await supabase.storage.from('profile-avatars').list('', { limit: 1 });
     return { ok: !error };
   });
+  const contactExchangeRequests = await toCheck('Contact exchange requests table', async () => {
+    const { error } = await supabase
+      .from('contact_exchange_requests')
+      .select('id')
+      .limit(1);
+    return { ok: !error };
+  });
 
   return {
     appVersion: appConfig.expo.version,
@@ -52,6 +59,7 @@ export async function getDiagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
       rpcHealth,
       publicProfileRpc,
       storageBucket,
+      contactExchangeRequests,
     ],
   };
 }
