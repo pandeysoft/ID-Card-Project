@@ -409,6 +409,23 @@ export type Database = {
         };
         Returns: Array<Database['public']['Tables']['contact_exchange_requests']['Row']>;
       };
+      accept_contact_exchange_request: {
+        Args: {
+          p_request_id: string;
+        };
+        Returns: Array<Database['public']['Tables']['contact_exchange_requests']['Row']>;
+      };
+      list_contact_exchange_requests: {
+        Args: Record<string, never>;
+        Returns: Array<
+          Database['public']['Tables']['contact_exchange_requests']['Row'] & {
+            requester_name: string | null;
+            requester_headline: string | null;
+            recipient_name: string | null;
+            recipient_headline: string | null;
+          }
+        >;
+      };
       get_public_profile_by_slug: {
         Args: {
           profile_slug: string;

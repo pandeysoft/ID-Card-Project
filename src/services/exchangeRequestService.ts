@@ -4,6 +4,15 @@ import type { Database } from '../types/database';
 
 type ExchangeRequestRow = Database['public']['Tables']['contact_exchange_requests']['Row'];
 type ExchangeRequestInsert = Database['public']['Tables']['contact_exchange_requests']['Insert'];
+type ExchangeRequestListRow =
+  Database['public']['Functions']['list_contact_exchange_requests']['Returns'][number];
+
+export type ExchangeRequestWithProfiles = ContactExchangeRequest & {
+  requesterName?: string;
+  requesterHeadline?: string;
+  recipientName?: string;
+  recipientHeadline?: string;
+};
 
 export type CreateExchangeRequestInput = {
   requesterUserId: string;
@@ -66,9 +75,20 @@ export async function createExchangeRequest(
 
 export async function acceptExchangeRequest(
   requestId: string,
-  recipientUserId: string,
+  _recipientUserId: string,
 ): Promise<ContactExchangeRequest> {
-  return respondToExchangeRequest(requestId, recipientUserId, 'recipient_user_id', 'accepted');
+  const { data, error } = await supabase
+    .rpc('accept_contact_exchange_request', { p_request_id: requestId })
+    .returns<ExchangeRequestRow[]>();
+
+  assertNoError(error, 'Unable to accept contact exchange request.');
+  const rows = Array.isArray(data) ? data : [];
+  const row = rows[0];
+  if (!row) {
+    throw new Error('Unable to accept contact exchange request.');
+  }
+
+  return mapExchangeRequestRow(row);
 }
 
 export async function declineExchangeRequest(
@@ -83,6 +103,16 @@ export async function cancelExchangeRequest(
   requesterUserId: string,
 ): Promise<ContactExchangeRequest> {
   return respondToExchangeRequest(requestId, requesterUserId, 'requester_user_id', 'cancelled');
+}
+
+export async function listExchangeRequests(): Promise<ExchangeRequestWithProfiles[]> {
+  const { data, error } = await supabase
+    .rpc('list_contact_exchange_requests', {})
+    .returns<ExchangeRequestListRow[]>();
+
+  assertNoError(error, 'Unable to load contact exchange requests.');
+  const rows = Array.isArray(data) ? data : [];
+  return rows.map(mapExchangeRequestListRow);
 }
 
 async function respondToExchangeRequest(
@@ -135,5 +165,15 @@ function mapExchangeRequestRow(row: ExchangeRequestRow): ContactExchangeRequest 
     status: row.status,
     createdAt: row.created_at,
     respondedAt: row.responded_at ?? undefined,
+  };
+}
+
+function mapExchangeRequestListRow(row: ExchangeRequestListRow): ExchangeRequestWithProfiles {
+  return {
+    ...mapExchangeRequestRow(row),
+    requesterName: row.requester_name ?? undefined,
+    requesterHeadline: row.requester_headline ?? undefined,
+    recipientName: row.recipient_name ?? undefined,
+    recipientHeadline: row.recipient_headline ?? undefined,
   };
 }

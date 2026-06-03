@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { ContactsScreen } from '../screens/ContactsScreen';
+import { ExchangeRequestsScreen } from '../screens/ExchangeRequestsScreen';
 import { MyCardScreen } from '../screens/MyCardScreen';
 import { ScanScreen } from '../screens/ScanScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
@@ -13,6 +14,7 @@ const tabIcons: Record<keyof RootTabParamList, string> = {
   MyCard: 'ID',
   Scan: '[]',
   Contacts: '@',
+  Exchange: '<>',
   Settings: '*',
 };
 
@@ -45,6 +47,7 @@ export function RootTabs() {
       <Tab.Screen name="MyCard" component={MyCardScreen} options={{ title: 'My Card' }} />
       <Tab.Screen name="Scan" component={ScanScreen} />
       <Tab.Screen name="Contacts" component={ContactsScreen} />
+      <Tab.Screen name="Exchange" component={ExchangeRequestsScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );

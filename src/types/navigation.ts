@@ -28,5 +28,6 @@ export type RootTabParamList = {
   MyCard: undefined;
   Scan: undefined;
   Contacts: undefined;
+  Exchange: undefined;
   Settings: undefined;
 };

@@ -1,5 +1,6 @@
 import appConfig from '../../app.json';
 import { publicEnv } from '../config/env';
+import { listExchangeRequests } from './exchangeRequestService';
 import { getPublicProfileBySlug } from './publicProfileService';
 import { supabase } from './supabase';
 import { checkSupabaseConnection } from './healthService';
@@ -39,6 +40,14 @@ export async function getDiagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
       .limit(1);
     return { ok: !error };
   });
+  const contactExchangeService = await toCheck('Contact exchange request service', async () => {
+    if (!session?.user?.id) {
+      return { ok: true };
+    }
+
+    await listExchangeRequests();
+    return { ok: true };
+  });
 
   return {
     appVersion: appConfig.expo.version,
@@ -60,6 +69,7 @@ export async function getDiagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
       publicProfileRpc,
       storageBucket,
       contactExchangeRequests,
+      contactExchangeService,
     ],
   };
 }

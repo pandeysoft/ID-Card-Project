@@ -5,10 +5,15 @@ import type { Database } from '../src/types/database';
 
 type PublicSafeRpcRow =
   Database['public']['Functions']['get_public_profile_by_slug']['Returns'][number];
+type ExchangeListRpcRow =
+  Database['public']['Functions']['list_contact_exchange_requests']['Returns'][number];
 type Assert<T extends true> = T;
 type HasKey<T, K extends PropertyKey> = K extends keyof T ? true : false;
 type _RpcDoesNotIncludeUserId = Assert<HasKey<PublicSafeRpcRow, 'user_id'> extends false ? true : false>;
 type _RpcDoesNotIncludeProfileId = Assert<HasKey<PublicSafeRpcRow, 'profile_id'> extends false ? true : false>;
+type _ExchangeListDoesNotIncludePublishedData = Assert<HasKey<ExchangeListRpcRow, 'published_data'> extends false ? true : false>;
+type _ExchangeListDoesNotIncludeEmail = Assert<HasKey<ExchangeListRpcRow, 'email'> extends false ? true : false>;
+type _ExchangeListDoesNotIncludePhone = Assert<HasKey<ExchangeListRpcRow, 'phone'> extends false ? true : false>;
 
 function assertEqual<T>(actual: T, expected: T, message: string) {
   if (actual !== expected) {
