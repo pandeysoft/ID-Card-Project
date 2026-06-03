@@ -14,6 +14,8 @@ export type UserRole = "user" | "admin" | "owner";
 
 export type OrganizationRole = "owner" | "admin" | "member";
 
+export type CompanyRole = "owner" | "admin" | "member";
+
 export type ProfileVisibility = "private" | "contacts" | "public";
 
 export type LeadStatus =
@@ -65,6 +67,26 @@ export interface OrganizationMember {
   role: OrganizationRole;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface Company {
+  id: string;
+  ownerUserId: string;
+  name: string;
+  slug: string;
+  logoUrl?: string;
+  website?: string;
+  description?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface CompanyMembership {
+  id: string;
+  companyId: string;
+  userId: string;
+  role: CompanyRole;
+  createdAt: Timestamp;
 }
 
 export interface PrivacySettings {

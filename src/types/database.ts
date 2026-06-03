@@ -1,4 +1,4 @@
-import type { BusinessProfile, ContactExchangeStatus, ProfileLink, ProfileType, ProfileVisibility } from './cardiq';
+import type { BusinessProfile, CompanyRole, ContactExchangeStatus, ProfileLink, ProfileType, ProfileVisibility } from './cardiq';
 
 export type PublicProfilePublishedData = {
   type?: ProfileType;
@@ -107,6 +107,57 @@ export type Database = {
           lead_sharing_requires_consent?: boolean;
           allow_vcard_export?: boolean;
           updated_at?: string;
+        };
+      };
+      companies: {
+        Row: {
+          id: string;
+          owner_user_id: string;
+          name: string;
+          slug: string;
+          logo_url: string | null;
+          website: string | null;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_user_id: string;
+          name: string;
+          slug: string;
+          logo_url?: string | null;
+          website?: string | null;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          slug?: string;
+          logo_url?: string | null;
+          website?: string | null;
+          description?: string | null;
+          updated_at?: string;
+        };
+      };
+      company_memberships: {
+        Row: {
+          id: string;
+          company_id: string;
+          user_id: string;
+          role: CompanyRole;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          user_id: string;
+          role?: CompanyRole;
+          created_at?: string;
+        };
+        Update: {
+          role?: CompanyRole;
         };
       };
       contacts: {

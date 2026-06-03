@@ -5,6 +5,7 @@ export * as appUserService from './appUserService';
 export * as avatarService from './avatarService';
 export * as bootstrapService from './bootstrapService';
 export * as businessCardOcrService from './businessCardOcrService';
+export * as companyService from './companyService';
 export * as profileService from './profileService';
 export * as profileLinkService from './profileLinkService';
 export * as contactService from './contactService';

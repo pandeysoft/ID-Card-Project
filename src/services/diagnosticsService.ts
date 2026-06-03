@@ -33,6 +33,13 @@ export async function getDiagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
     const { error } = await supabase.storage.from('profile-avatars').list('', { limit: 1 });
     return { ok: !error };
   });
+  const companies = await toCheck('Companies table', async () => {
+    const { error } = await supabase
+      .from('companies')
+      .select('id')
+      .limit(1);
+    return { ok: !error };
+  });
   const contactExchangeRequests = await toCheck('Contact exchange requests table', async () => {
     const { error } = await supabase
       .from('contact_exchange_requests')
@@ -68,6 +75,7 @@ export async function getDiagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
       rpcHealth,
       publicProfileRpc,
       storageBucket,
+      companies,
       contactExchangeRequests,
       contactExchangeService,
     ],
